@@ -26,5 +26,6 @@
     <modules>
         <module>internal-dubbo</module>
         <module>internal-gateway</module>
+        <module>service</module>
     </modules>
 </project>

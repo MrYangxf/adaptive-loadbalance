@@ -14,12 +14,11 @@
 
 
 ### Apache Dubbo Gateway
-
+TBD
 
 ### 题目由来
 
 传统的负载均衡场景为单调度器模式，即中心化负载均衡：调度器负责将新到的请求立即转发至多个后端服务器中的一个。随着分布式系统的发展，这种单调度器模式在扩展性和可靠性方面的问题也愈发严重。因此，设计和实现去中心化且性能优异的负载均衡是学术和工业界的共同需求。
-
 
 ## 赛题说明
 
@@ -29,9 +28,13 @@
 2. Provider 端能自动进行服务容量评估，当请求数量超过服务能力时，允许拒绝部分请求，以保证服务不过载。
 3. 当请求速率高于所有的 Provider 服务效率之和时，允许 Gateway( Consumer ) 拒绝服务新到请求。
 
-
 ### 架构
-TBD
+![service_architect](assets/service-architect.png)
+
+- Gateway 负责将请求转发至 Provider；
+- Provider 处理请求返回响应；
+- Provider 按照 CPU 核数和内存大小分为 Small、Medium、Large 三个规格；
+- 选手需要设计实现 Gateway 选择 Provider 的 loadbalance 算法。
 
 ### 服务
 
