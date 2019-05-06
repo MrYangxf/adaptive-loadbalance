@@ -74,7 +74,6 @@
         <module>internal-dubbo</module>
         <module>internal-gateway</module>
         <module>internal-service</module>
-        <module>bootstrap</module>
         <module>workspace</module>
     </modules>
 </project>

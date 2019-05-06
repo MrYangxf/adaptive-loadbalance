@@ -7,13 +7,14 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
  * @author guohaoice@gmail.com
  */
 public class MyConsumer {
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, InterruptedException {
     ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"classpath:dubbo-consumer.xml"});
     context.start();
     HashInterface bean = context.getBean(HashInterface.class);
-    for (int i = 0; i < 10; i++) {
+    while(true){
+      Thread.sleep(1000);
       System.out.println(bean.hash("hahaha"));
     }
-    System.in.read(); // press any key to exit
+//    System.in.read(); // press any key to exit
   }
 }

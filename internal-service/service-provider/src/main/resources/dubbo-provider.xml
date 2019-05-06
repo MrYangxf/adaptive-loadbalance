@@ -7,14 +7,14 @@
     <!-- provider's application name, used for tracing dependency relationship -->
     <dubbo:application name="demo-provider"/>
     <!-- use multicast registry center to export service -->
-    <dubbo:registry address="multicast://224.5.6.7:1234"/>
+    <dubbo:registry address="zookeeper://127.0.0.1:2181"/>
     <!-- use dubbo protocol to export service on port 20880 -->
     <dubbo:protocol name="dubbo" port="20880"/>
     <!-- service implementation, as same as regular local bean -->
     <bean id="demoService" class="com.aliware.tianchi.HashServiceImpl">
-        <constructor-arg index="0" value="10"/>
-        <constructor-arg index="1" value="10000000"/>
-        <constructor-arg index="2" value="salt-value"/>
+<!--        <constructor-arg index="0" value=""/>-->
+<!--        <constructor-arg index="1" value="10000000"/>-->
+        <constructor-arg index="0" value="salt-value"/>
     </bean>
     <!-- declare the service interface to be exported -->
     <dubbo:service interface="com.aliware.tianchi.HashInterface" ref="demoService"/>

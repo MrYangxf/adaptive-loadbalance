@@ -19,14 +19,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.dubbo</groupId>
-            <artifactId>internal-dubbo</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.aliware.tianchi</groupId>
             <artifactId>internal-gateway</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
-
 </project>

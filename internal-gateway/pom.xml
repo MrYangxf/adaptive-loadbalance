@@ -12,10 +12,10 @@
     <artifactId>internal-gateway</artifactId>
 
     <dependencies>
-        <dependency>
-            <groupId>org.apache.dubbo</groupId>
-            <artifactId>internal-dubbo</artifactId>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.apache.dubbo</groupId>-->
+<!--            <artifactId>internal-dubbo</artifactId>-->
+<!--        </dependency>-->
     </dependencies>
 
 </project>
