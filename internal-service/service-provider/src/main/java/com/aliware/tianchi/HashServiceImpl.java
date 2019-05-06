@@ -22,6 +22,9 @@ public class HashServiceImpl implements HashInterface {
   private volatile ThrashConfig config;
   private ScheduledExecutorService scheduler =
       new ScheduledThreadPoolExecutor(1, new NamedThreadFactory("Benchmark-refresh-permit"));
+  public HashServiceImpl(String salt) {
+      this(salt,Collections.emptyList());
+  }
 
   public HashServiceImpl(String salt, List<ThrashConfig> configs) {
     this.salt = salt;
