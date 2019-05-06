@@ -71,7 +71,8 @@
         </plugins>
     </build>
     <modules>
-        <module>internal-dubbo</module>
+        <!--<module>internal-dubbo</module>-->
+        <module>dubbo-parent</module>
         <module>internal-gateway</module>
         <module>internal-service</module>
         <module>bootstrap</module>
