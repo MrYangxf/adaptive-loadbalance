@@ -44,6 +44,14 @@ TBD
 
 TBD
 
+### 项目结构
+
+- bootstrap 程序启动入口，不允许修改，评测时不依赖选手编译的 jar 包；
+- internal-dubbo dubbo 依赖，不允许修改，评测时不依赖选手编译的 jar 包；
+- internal-gateway gateway 依赖，不允许修改，评测时不依赖选手编译的 jar 包；
+- internal-service 服务的接口定义和实现，不允许修改，评测时不依赖选手编译的 jar 包；
+- workspace 选手进行开发的模块
+
 ### 开发接口
 
 TBD

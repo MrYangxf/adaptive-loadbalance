@@ -11,5 +11,11 @@
 
     <artifactId>internal-gateway</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.aliware.tianchi</groupId>
+            <artifactId>internal-dubbo</artifactId>
+        </dependency>
+    </dependencies>
 
 </project>

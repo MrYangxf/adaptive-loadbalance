@@ -9,6 +9,53 @@
     <packaging>pom</packaging>
     <version>1.0.0</version>
 
+    <dependencyManagement>
+        <dependencies>
+            <!--internal start-->
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>internal-dubbo</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>internal-gateway</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>service-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>service-consumer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>service-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>workspace-provider</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>workspace-gateway</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!--internal end-->
+
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-context</artifactId>
+                <version>4.3.20.RELEASE</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <build>
         <plugins>
             <plugin>
@@ -26,6 +73,8 @@
     <modules>
         <module>internal-dubbo</module>
         <module>internal-gateway</module>
-        <module>service</module>
+        <module>internal-service</module>
+        <module>bootstrap</module>
+        <module>workspace</module>
     </modules>
 </project>
