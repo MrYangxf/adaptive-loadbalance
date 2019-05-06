@@ -13,9 +13,9 @@
         <dependencies>
             <!--internal start-->
             <dependency>
-                <groupId>com.aliware.tianchi</groupId>
+                <groupId>org.apache.dubbo</groupId>
                 <artifactId>internal-dubbo</artifactId>
-                <version>${project.version}</version>
+                <version>2.7.2-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>com.aliware.tianchi</groupId>
@@ -71,8 +71,7 @@
         </plugins>
     </build>
     <modules>
-        <!--<module>internal-dubbo</module>-->
-        <module>dubbo-parent</module>
+        <module>internal-dubbo</module>
         <module>internal-gateway</module>
         <module>internal-service</module>
         <module>bootstrap</module>

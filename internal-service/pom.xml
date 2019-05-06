@@ -19,9 +19,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.aliware.tianchi</groupId>
+            <groupId>org.apache.dubbo</groupId>
             <artifactId>internal-dubbo</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.aliware.tianchi</groupId>
