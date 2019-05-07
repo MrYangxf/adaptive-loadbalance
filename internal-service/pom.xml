@@ -22,4 +22,11 @@
     </modules>
 
 
+    <dependencies>
+        <dependency>
+            <groupId>com.aliware.tianchi</groupId>
+            <artifactId>internal-gateway</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
 </project>
