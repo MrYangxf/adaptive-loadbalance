@@ -8,13 +8,11 @@ import java.util.concurrent.Semaphore;
 public class ThrashConfig {
     public static final ThrashConfig INIT_CONFIG=new ThrashConfig(4000,Integer.MAX_VALUE,10);
     final long durationInMs;
-    final int maxConcurrency;
     final int averageRTTInMs;
     final Semaphore permit;
 
     public ThrashConfig(long durationInMs, int maxConcurrency, int averageRTTInMs) {
         this.durationInMs = durationInMs;
-        this.maxConcurrency = maxConcurrency;
         this.averageRTTInMs = averageRTTInMs;
         this.permit=new Semaphore(maxConcurrency);
     }

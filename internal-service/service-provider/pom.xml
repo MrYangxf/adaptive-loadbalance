@@ -11,6 +11,7 @@
 
     <artifactId>service-provider</artifactId>
 
+
     <dependencies>
         <dependency>
             <groupId>com.aliware.tianchi</groupId>
@@ -20,12 +21,7 @@
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.apache.dubbo</groupId>
-            <artifactId>dubbo-dependencies-zookeeper</artifactId>
-        </dependency>
     </dependencies>
-
 
     <build>
         <plugins>

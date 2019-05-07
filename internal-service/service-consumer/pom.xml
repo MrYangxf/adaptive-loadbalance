@@ -16,14 +16,6 @@
             <groupId>com.aliware.tianchi</groupId>
             <artifactId>service-api</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.dubbo</groupId>
-            <artifactId>dubbo</artifactId>
-        </dependency>
     </dependencies>
 
     <build>

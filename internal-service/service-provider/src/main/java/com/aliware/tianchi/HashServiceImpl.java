@@ -2,13 +2,15 @@ package com.aliware.tianchi;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.dubbo.common.utils.NamedThreadFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Facade
@@ -16,14 +18,18 @@ import org.apache.dubbo.common.utils.NamedThreadFactory;
  * @author guohaoice@gmail.com
  */
 public class HashServiceImpl implements HashInterface {
+  private static final Logger LOGGER = LoggerFactory.getLogger(HashServiceImpl.class);
+
   private final String salt;
   private final AtomicBoolean init = new AtomicBoolean(false);
   private final List<ThrashConfig> configs;
   private volatile ThrashConfig config;
+  private Random rng = new Random(2019);
   private ScheduledExecutorService scheduler =
-      new ScheduledThreadPoolExecutor(1, new NamedThreadFactory("Benchmark-refresh-permit"));
+      new ScheduledThreadPoolExecutor(1, new NamedThreadFactory("HashService-Refresher"));
+
   public HashServiceImpl(String salt) {
-      this(salt,Collections.emptyList());
+    this(salt, Collections.emptyList());
   }
 
   public HashServiceImpl(String salt, List<ThrashConfig> configs) {
@@ -34,6 +40,7 @@ public class HashServiceImpl implements HashInterface {
 
   @Override
   public int hash(String input) {
+    long st = System.currentTimeMillis();
     if (!init.get()) {
       if (init.compareAndSet(false, true)) {
         int startTime = 0;
@@ -53,6 +60,8 @@ public class HashServiceImpl implements HashInterface {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } finally {
+      long cost = System.currentTimeMillis() - st;
+      LOGGER.info("HashService cost:{} ms to handle request", cost);
       permit.release();
     }
     throw new IllegalStateException("Unexpected exception");
@@ -63,7 +72,6 @@ public class HashServiceImpl implements HashInterface {
   }
 
   private long nextRTT() {
-    ThreadLocalRandom rng = ThreadLocalRandom.current();
     double u = rng.nextDouble();
     int x = 0;
     double cdf = 0;
