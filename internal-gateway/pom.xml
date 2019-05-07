@@ -14,7 +14,8 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.dubbo</groupId>
-            <artifactId>internal-dubbo</artifactId>
+            <artifactId>dubbo</artifactId>
+            <version>tianchi.1.0.0</version>
         </dependency>
     </dependencies>
 

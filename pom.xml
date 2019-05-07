@@ -9,14 +9,20 @@
     <packaging>pom</packaging>
     <version>1.0.0</version>
 
+    <properties>
+        <dubbo.version>tianchi.1.0.0</dubbo.version>
+    </properties>
+
+
     <dependencyManagement>
         <dependencies>
-            <!--internal start-->
+            <!--  install from local -->
             <dependency>
                 <groupId>org.apache.dubbo</groupId>
-                <artifactId>internal-dubbo</artifactId>
-                <version>2.7.2-SNAPSHOT</version>
+                <artifactId>dubbo</artifactId>
+                <version>${dubbo.version}</version>
             </dependency>
+            <!--internal start-->
             <dependency>
                 <groupId>com.aliware.tianchi</groupId>
                 <artifactId>internal-gateway</artifactId>
@@ -52,7 +58,7 @@
             <dependency>
                 <groupId>org.springframework</groupId>
                 <artifactId>spring-context</artifactId>
-                <version>4.3.20.RELEASE</version>
+                <version>4.3.23.RELEASE</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -71,7 +77,6 @@
         </plugins>
     </build>
     <modules>
-        <module>internal-dubbo</module>
         <module>internal-gateway</module>
         <module>internal-service</module>
         <module>bootstrap</module>

@@ -9,6 +9,10 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
+    <properties>
+        <dubbo.version>tianchi.1.0.0</dubbo.version>
+    </properties>
+
     <artifactId>service</artifactId>
     <packaging>pom</packaging>
     <modules>
@@ -17,16 +21,5 @@
         <module>service-provider</module>
     </modules>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.apache.dubbo</groupId>
-            <artifactId>internal-dubbo</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.aliware.tianchi</groupId>
-            <artifactId>internal-gateway</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
 
 </project>
