@@ -30,32 +30,12 @@
             <!--internal start-->
             <dependency>
                 <groupId>com.aliware.tianchi</groupId>
-                <artifactId>internal-gateway</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.aliware.tianchi</groupId>
-                <artifactId>service-api</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.aliware.tianchi</groupId>
-                <artifactId>service-consumer</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.aliware.tianchi</groupId>
-                <artifactId>service-provider</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.aliware.tianchi</groupId>
-                <artifactId>workspace-provider</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.aliware.tianchi</groupId>
                 <artifactId>workspace-gateway</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliware.tianchi</groupId>
+                <artifactId>workspace-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!--internal end-->
@@ -68,11 +48,6 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>1.2.3</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-lang3</artifactId>
-                <version>3.9</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -91,8 +66,8 @@
         </plugins>
     </build>
     <modules>
-        <module>internal-gateway</module>
-        <module>internal-service</module>
-        <module>workspace</module>
+        <module>workspace-common</module>
+        <module>workspace-gateway</module>
+        <module>workspace-provider</module>
     </modules>
 </project>
