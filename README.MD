@@ -11,6 +11,7 @@
 ![dubbo_architect](assets/dubbo_architecture.png)
 
 ### Apache Dubbo Gateway
+
 TBD
 
 ### 题目由来
@@ -48,7 +49,7 @@ TBD
 Provider 是服务提供者，Gateway( Consumer ) 是服务消费者，Gateway 消费 Provider 提供的服务。Gateway 及 Provider 服务的实现 **由赛会官方提供**。 为简化流程，本次比赛不使用服务注册和发现机制，Gateway 通过 docker 的 dns 进行直连调用 Provider 服务。
 
 Provider 服务接口：
-```
+```java
 public interface HashInterface {
 
   /**
@@ -84,11 +85,122 @@ Consumer 在接收到客户端请求以后，会生成一个随机字符串，�
 
 ### 开发接口
 
-TBD
+#### com.aliware.tianchi.UserLoadBalance
+
+**负载均衡接口**，用户需要更改该接口的实现，在示例代码中，实现了一个随机负载均衡算法
+
+```java
+public class UserLoadBalance implements LoadBalance {
+
+    @Override
+    public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
+        return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
+    }
+}
+```
 
 ### 辅助接口
 
-TBD
+#### org.apache.dubbo.rpc.listener.CallbackListener
+
+```java
+@SPI
+public interface CallbackListener {
+    void receiveServerMsg(String msg);
+}
+```
+
+客户端扩展接口，用于接收服务端的推送。
+
+**接口实现示例**
+
+```java
+public class CallbackListenerImpl implements CallbackListener {
+    @Override
+    public void receiveServerMsg(String msg) {
+        System.out.println("receive msg from server :" + msg);
+    }
+}
+```
+
+**添加 SPI 声明文件**
+
+```
+com.aliware.tianchi.CallbackListenerImpl
+```
+
+文件内容只有一行，存放位置需要固定在： 
+
+resources/META-INF/services/org.apache.dubbo.rpc.listener.CallbackListener
+
+#### org.apache.dubbo.rpc.service.CallbackService
+
+```java
+@SPI
+public interface CallbackService {
+    void addListener(String key, CallbackListener listener);
+}
+```
+
+服务端扩展接口，用于接收客户端 CallbackListener 的注册，并执行推送能力。在比赛中，选手只需要关心推送的内容，注册这一行为由赛题本身保证。
+
+**接口实现示例**
+
+```java
+public class CallbackServiceImpl implements CallbackService {
+
+    public CallbackServiceImpl() {
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (!listeners.isEmpty()) {
+                    for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+                        try {
+                            entry.getValue().receiveServerMsg(new Date().toString());
+                        } catch (Throwable t1) {
+                            listeners.remove(entry.getKey());
+                        }
+                    }
+                }
+            }
+        }, 0, 5000);
+    }
+
+    private Timer timer = new Timer();
+
+    /**
+     * key: listener type
+     * value: callback listener
+     */
+    private final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
+
+    @Override
+    public void addListener(String key, CallbackListener listener) {
+        listeners.put(key, listener);
+        listener.receiveServerMsg(new Date().toString()); // send notification for change
+    }
+}
+```
+
+由于客户端可以实现多个 CallbackListener 实例，故在示例中使用 `Map<String, CallbackListener>` 维护关联。
+
+**添加 SPI 声明文件**
+
+```
+com.aliware.tianchi.CallbackServiceImpl
+```
+
+文件内容只有一行，存放位置需要固定在： 
+
+resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
+
+以上 CallbackListener 和 CallbackService 结合使用，实现了一个服务提供者每 5 秒向客户端推送服务器时间的能力，选手可以自行扩展。
+
+### 接口说明
+
+- 开发接口固定为 `UserLoadBalance`，选手可以修改其实现，但不能重命名、移动其位置，包括其 SPI 定义文件，否则评测程序无法正常加载选手的代码
+- 辅助接口不强制选手使用，只是为了方便一部分负载均衡算法的实现而设计的，一些算法客户端需要依赖服务端的信息做决策
+- SPI （Service Provider Interface）介绍：https://www.cnkirito.moe/spi/
 
 ### 限制
 
@@ -109,7 +221,7 @@ TBD
     ```
     
 - [internal-gateway](https://code.aliyun.com/middlewarerace2019/internal-gateway) 
-    
+  
     执行调用的consumer，接收压测程序请求，加载选手实现[workspace-gateway]()部分的 LoadBalance 扩展，按照扩展选择相应 Provider 完成调用，返回结果成功(200)或失败(500)。启动程序已经被集成至 internal-service，本地开发无需关心。
    
     由于代码对比赛支持做了一定的修改，所以需要手动安装依赖：
@@ -124,7 +236,7 @@ TBD
     ```bash
     git clone https://code.aliyun.com/middlewarerace2019/internal-service.git
     mvn clean install -Dmaven.test.skip=true
-    ``` 
+    ```
 
 #### 开发项目
 - [adaptive-loadbalance](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance)
@@ -173,5 +285,3 @@ TBD
 |  1   | 1,000,000  |  9,999   |
 |  2   | 1,000,000  |  9,998   |
 |  3   |  800,000   |  10,000  |
-```
-
