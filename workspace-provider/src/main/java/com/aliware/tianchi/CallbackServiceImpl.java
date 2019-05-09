@@ -1,6 +1,5 @@
 package com.aliware.tianchi;
 
-import org.apache.dubbo.common.extension.SPI;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
