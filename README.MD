@@ -195,6 +195,95 @@ resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
 
 以上 CallbackListener 和 CallbackService 结合使用，实现了一个服务提供者每 5 秒向客户端推送服务器时间的能力，选手可以自行扩展。
 
+#### org.apache.dubbo.remoting.transport.RequestLimiter
+
+```java
+@SPI
+public interface RequestLimiter {
+    boolean tryAcquire(Request request, int activeTaskCount);
+}
+```
+
+限流扩展接口，服务端扩展接口
+
+**接口实现示例**
+
+```java
+public class TestRequestLimiter implements RequestLimiter {
+
+    @Override
+    public boolean tryAcquire(Request request, int activeTaskCount) {
+        return true;
+    }
+
+}
+```
+
+请求参数说明：
+- request 服务请求详细信息
+- activeTaskCount 服务端对应线程池的活跃线程数
+
+返回值说明：
+- false 不提交给服务端业务线程池直接返回，客户端可以在 Filter 中捕获 RpcException
+- true 不限流
+
+
+**添加 SPI 声明文件**
+
+```
+com.aliware.tianchi.TestRequestLimiter
+```
+
+文件内容只有一行，存放位置需要固定在： 
+
+resources/META-INF/services/org.apache.dubbo.remoting.transport.RequestLimiter
+
+#### org.apache.dubbo.rpc.Filter
+
+```java
+@SPI
+public interface Filter {
+
+    Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException;
+
+    default Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
+        return result;
+    }
+
+}
+```
+
+**接口实现示例**
+
+```java
+@Activate(group = Constants.CONSUMER)
+public class TestClientFilter implements Filter {
+    @Override
+    public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        try{
+            Result result = invoker.invoke(invocation);
+            return result;
+        }catch (Exception e){
+            // do sth
+            throw e;
+        }
+
+    }
+}
+```
+
+**添加 SPI 声明文件**
+
+```
+com.aliware.tianchi.TestClientFilter
+```
+
+文件内容只有一行，存放位置需要固定在： 
+
+resources/META-INF/services/org.apache.dubbo.rpc.Filter
+
+
+
 ### 接口说明
 
 - 开发接口固定为 `UserLoadBalance`，选手可以修改其实现，但不能重命名、移动其位置，包括其 SPI 定义文件，否则评测程序无法正常加载选手的代码
