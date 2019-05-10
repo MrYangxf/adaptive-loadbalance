@@ -11,6 +11,11 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * @author daofeng.xjf
+ *
+ * 负载均衡扩展接口
+ * 必选接口，核心接口
+ * 此类可以修改实现，不可以移动类或者修改包名
+ * 选手需要基于此类实现自己的负载均衡算法
  */
 public class UserLoadBalance implements LoadBalance {
 
