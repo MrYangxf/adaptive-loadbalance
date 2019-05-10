@@ -18,9 +18,10 @@ TBD
 
 传统的负载均衡场景为单调度器模式，即中心化负载均衡：调度器负责将新到的请求立即转发至多个后端服务器中的一个。随着分布式系统的发展，这种单调度器模式在扩展性、可靠性和性能方面的问题愈发严重。因此，设计和实现去中心化且性能优异的负载均衡是学术和工业界的共同需求。
 
+
 ## 赛题说明
 
-基于 Dubbo 的 LoadBalance、Router、Filter 等SPI接口，实现一套自适应负载均衡机制，作为扩展作用于 gateway 和 provider两端。要求能够具备以下能力：
+基于题目提供的 Dubbo LoadBalance 接口，实现一套自适应负载均衡机制，作为扩展作用于 gateway 和 provider两端。要求能够具备以下能力：
 
 1. Gateway(Consumer) 端能够自动根据服务处理能力变化动态最优化分配请求保证较低响应时间，较高吞吐量。
 2. Provider 端能自动进行服务容量评估，当请求数量超过服务能力时，允许拒绝部分请求，以保证服务不过载。
@@ -34,19 +35,18 @@ TBD
 - Gateway 负责将请求转发至 Provider；
 - Provider 处理请求返回响应；
 - Provider 按照 CPU 核数和内存大小分为 Small、Medium、Large 三个规格；
-- 选手需要设计实现 Gateway 选择 Provider 的 loadbalance/router 算法。
-
-
+- 选手需要设计实现 Gateway 选择 Provider 的 load balance 算法。
 
 ### 目标
 
 1. 保证系统稳定性，任何情况下服务都不能被打挂；
 2. 保证请求成功率，尽可能的让更多的请求在较短的时间内被处理；
 3. 尽可能避免因重试导致流量被过度放大。
+4. 为降低难度，本次比赛题目只使用了一个 Consumer。但负载均衡算法应该是可扩展的，需要考虑多 Consumer 和多 Provider 的情况。
 
 ### 服务
 
-Provider 是服务提供者，Gateway( Consumer ) 是服务消费者，Gateway 消费 Provider 提供的服务。Gateway 及 Provider 服务的实现 **由赛会官方提供**。 为简化流程，本次比赛不使用服务注册和发现机制，Gateway 通过 docker 的 dns 进行直连调用 Provider 服务。
+Provider 是服务提供者，Gateway( Consumer ) 是服务消费者，Gateway 消费 Provider 提供的服务。Gateway 及 Provider 服务的实现 **由赛会官方提供**。 为简化流程，本次比赛不使用服务注册和发现机制，Gateway 通过 docker 的 dns 直连调用 Provider 服务。
 
 Provider 服务接口：
 ```java
@@ -64,7 +64,7 @@ public interface HashInterface {
   int hash(String input);
 }
 ```
-Consumer 在接收到客户端请求以后，会生成一个随机字符串，该字符串经过 Consumer Agent 和 Provider Agent 后到达 Provider，由 Provider 计算哈希值后返回，客户端会校验该哈希值与其生成的数据是否相同，如果相同则返回正常（200），否则返回异常（500）。
+Consumer 在接收到客户端请求以后，会生成一个随机字符串，然后根据负载均衡算法选择一个 Provider 。 由 Provider 计算哈希值后返回，客户端会校验该哈希值与其生成的数据是否相同，如果相同则返回正常（200），否则返回异常（500）。
 
 ### 启动和调用流程
 
@@ -77,11 +77,10 @@ Consumer 在接收到客户端请求以后，会生成一个随机字符串，�
 
 ### 项目结构
 
-- bootstrap 程序启动入口，不允许修改，评测时不依赖选手编译的 jar 包；
 - internal-dubbo dubbo 依赖，不允许修改，评测时不依赖选手编译的 jar 包；
 - internal-gateway gateway 依赖，不允许修改，评测时不依赖选手编译的 jar 包；
 - internal-service 服务的接口定义和实现，不允许修改，评测时不依赖选手编译的 jar 包；
-- workspace 选手进行开发的模块, 评测时会以 jar 包依赖的方式加载
+- workspace 选手进行开发的模块, 评测时会以 jar 包依赖的方式加载。
 
 ### 开发接口
 
@@ -202,16 +201,20 @@ resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
 - 辅助接口不强制选手使用，只是为了方便一部分负载均衡算法的实现而设计的，一些算法客户端需要依赖服务端的信息做决策
 - SPI （Service Provider Interface）介绍：https://www.cnkirito.moe/spi/
 
-### 限制
+### 要求和限制
 
-1. 不允许修改 Dubbo/Gateway 相关配置
-2. 不允许使用脚本或者其他方式替换 provider/gateway 服务
-3. 不允许使用 provider 服务内的相关信息，如配置的 averageRTT/ maxConcurrency 等。
-4. 不允许引入外部依赖，如果对开源代码有所借鉴，可小部分 copy。
+1. 不允许修改 Dubbo/Gateway 相关配置；
+2. 不允许使用脚本或者其他方式替换 provider/gateway 服务；
+3. 不允许使用 Provider 服务内的相关信息，如配置的 averageRTT/ maxConcurrency 等, 允许自行统计和计算；
+4. 不允许引入外部依赖，如果对开源代码有所借鉴，可小部分 copy；
+5. 需要提供通用的算法实现，不允许以 hardcode 流量比例的方式来分配流量；
+6. Gateway 和 Provider 的 JVM 参数和其他参数不允许修改。
+7. 不允许使用任何 hack 的方式作弊，每次提交评测的代码都会存档，作弊会被取消参赛资格。
 
 ### 开发环境搭建
 
 #### 依赖项目
+
 - [internal-dubbo](https://code.aliyun.com/middlewarerace2019/dubbo-internal)
 
     比赛使用的特定版本 dubbo, 需要手动安装依赖。
@@ -222,7 +225,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
     
 - [internal-gateway](https://code.aliyun.com/middlewarerace2019/internal-gateway) 
   
-    执行调用的consumer，接收压测程序请求，加载选手实现[workspace-gateway]()部分的 LoadBalance 扩展，按照扩展选择相应 Provider 完成调用，返回结果成功(200)或失败(500)。启动程序已经被集成至 internal-service，本地开发无需关心。
+    执行调用的consumer，接收压测程序请求，加载选手实现[workspace-gateway](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance/tree/master/workspace-gateway)部分的 LoadBalance 扩展，按照扩展选择相应 Provider 完成调用，返回结果成功(200)或失败(500)。启动程序已经被集成至 internal-service，本地开发无需关心。
    
     由于代码对比赛支持做了一定的修改，所以需要手动安装依赖：
     ```bash
@@ -232,20 +235,50 @@ resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
    
 - [internal-service](https://code.aliyun.com/middlewarerace2019/internal-service)
 
-    内置服务，已经由赛题官方提供，开发过程不需要修改，只需要安装依赖。
+    内置服务，处理来自 Consumer 的请求，加载选手实现的负载均衡算法 [provider 部分](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance/tree/master/workspace-provider)。已经由赛题官方提供，开发过程不需要修改，只需要安装依赖。
     ```bash
     git clone https://code.aliyun.com/middlewarerace2019/internal-service.git
     mvn clean install -Dmaven.test.skip=true
     ```
 
 #### 开发项目
+
 - [adaptive-loadbalance](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance)
 
     选手按照题目提供的接口，实现 provider-consumer 协同的自适应负载均衡策略。
 
+#### 调试配置
+
+- 在`internal-service`项目中的`service-consumer/pom.xml`添加`workspace-gateway`依赖
+
+    ```xml
+    <dependency>
+        <artifactId>workspace-gateway</artifactId>
+        <groupId>com.aliware.tianchi</groupId>
+        <version>1.0.0</version>
+    </dependency>
+    ```
+    
+- 在`internal-service`项目中的`service-provider/pom.xml`添加`workspace-provider`依赖
+
+    ```xml
+    <dependency>
+        <artifactId>workspace-provider</artifactId>
+        <groupId>com.aliware.tianchi</groupId>
+        <version>1.0.0</version>
+    </dependency>
+    ```
+- 配置 hosts，将 `provider-small` 指向本地 IP (非 localhost/127.0.0.1),或者在`com.aliware.tianchi.netty.HttpProcessHandler#buildUrls`将`provider-small`修改为本地IP,也可以在`buildUrls`中添加多个不同的 Provider 地址。
+- 构建 demo 的 workspace 项目
+- 运行 `internal-service`项目中的`com.aliware.tianchi.MyProvider`启动 Provider
+- 运行 `internal-service`项目中的`com.aliware.tianchi.MyConsumer`启动 Consumer
+- 打开浏览器[http://localhost:8087/call](http://localhost:8087/call)，显示`OK`即表示配置成功。
+
 ## 评测
 ### 环境
 ![benchmark_architect](assets/benchmark_architect.png)
+
+所有程序均执行在 docker 中，docker 镜像由评测程序自动根据选手的代码仓库构建，不需要自行构建，若需要自行构建测试，请参考[docker](https://code.aliyun.com/middlewarerace2019/docker/tree/master)
 
 - Gateway ： 1 台 
 - Provider ： 3台
@@ -264,13 +297,13 @@ resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
 
 1. 启动 Gateway 和 Provider；
 2. PTS 按固定请求速率向 Gateway 发请求，持续 30 秒。
-3. 预热结束，10秒后进行。
+3. 预热结束，5秒后进行正式评测。
 
 #### 正式评测
 
 1. PTS 以固定请求速率向 Gateway 发送请求；
 2. Provider 的服务能力会按照一定规则变动；
-3. 3分钟后，PTS 停止发请求，压测结束。
+3. 1分钟后，PTS 停止发请求，压测结束。
 
 ### 排名规则
 
