@@ -288,7 +288,6 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 - 开发接口固定为 `UserLoadBalance`，选手可以修改其实现，但不能重命名、移动其位置，包括其 SPI 定义文件，否则评测程序无法正常加载选手的代码
 - 辅助接口不强制选手使用，只是为了方便一部分负载均衡算法的实现而设计的，一些算法客户端需要依赖服务端的信息做决策
-- SPI （Service Provider Interface）介绍：https://www.cnkirito.moe/spi/
 
 ### 要求和限制
 
