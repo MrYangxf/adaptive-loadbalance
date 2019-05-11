@@ -31,7 +31,7 @@ TBD
 
 ![service_architect](assets/service-architect.png)
 
-- 所有程序均在 docker 容器中运行
+- 所有程序均在不同的 docker 容器中运行,每个容器都独占运行在不同的物理机上：
 - Gateway 负责将请求转发至 Provider；
 - Provider 处理请求返回响应；
 - Provider 按照 CPU 核数和内存大小分为 Small、Medium、Large 三个规格；
