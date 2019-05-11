@@ -282,8 +282,6 @@ com.aliware.tianchi.TestClientFilter
 
 resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
-
-
 ### 接口说明
 
 - 开发接口固定为 `UserLoadBalance`，选手可以修改其实现，但不能重命名、移动其位置，包括其 SPI 定义文件，否则评测程序无法正常加载选手的代码
@@ -291,9 +289,9 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 ### 要求和限制
 
-1. 不允许修改 Dubbo/Gateway 相关配置；
+1. 不允许修改 dubbo/gateway 相关配置；
 2. 不允许使用脚本或者其他方式替换 provider/gateway 服务；
-3. 不允许使用 Provider 服务内的相关信息，如配置的 averageRTT/ maxConcurrency 等, 允许自行统计和计算；
+3. 不允许直接使用 Provider 的配置信息，如 averageRTT , maxConcurrency 配置, 允许自行统计和计算；
 4. 不允许引入外部依赖，如果对开源代码有所借鉴，可小部分 copy；
 5. 需要提供通用的算法实现，不允许以 hardcode 流量比例的方式来分配流量；
 6. Gateway 和 Provider 的 JVM 参数和其他参数不允许修改。
@@ -368,7 +366,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 所有程序均执行在 docker 中，docker 镜像由评测程序自动根据选手的代码仓库构建，不需要自行构建，若需要自行构建测试，请参考[docker](https://code.aliyun.com/middlewarerace2019/docker/tree/master)
 
-- Gateway ： 1 台 
+- Gateway ： 1 台 4c4g
 - Provider ： 3台
   - Provider-small: 1c2g
   - Provider-medium: 2c4g
