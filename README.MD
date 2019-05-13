@@ -292,10 +292,9 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 1. 不允许修改 dubbo/gateway 相关配置；
 2. 不允许使用脚本或者其他方式替换 provider/gateway 服务；
 3. 不允许直接使用 Provider 的配置信息，如 averageRTT , maxConcurrency 配置, 允许自行统计和计算；
-4. 不允许引入外部依赖，如果对开源代码有所借鉴，可小部分 copy；
-5. 需要提供通用的算法实现，不允许以 hardcode 流量比例的方式来分配流量；
-6. Gateway 和 Provider 的 JVM 参数和其他参数不允许修改。
-7. 不允许使用任何 hack 的方式作弊，每次提交评测的代码都会存档，作弊会被取消参赛资格。
+4. 需要提供通用的算法实现，不允许以 hardcode 流量比例的方式来分配流量；
+5. Gateway 和 Provider 的 JVM 参数和其他参数不允许修改。
+6. 不允许使用任何 hack 的方式作弊，每次提交评测的代码都会存档，作弊会被取消参赛资格。
 
 ### 开发环境搭建
 
@@ -375,7 +374,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
   - 三台机器的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
   - 三台机器任意一台的单台处理能力都小于总请求量。
 
-### 评测流程
+### 
 
 流程分为预热和正式评测两部分，预热部分不计算成绩，正式评测部分计算成绩。
 
