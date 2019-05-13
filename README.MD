@@ -368,9 +368,9 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 - Gateway ： 1 台 4c4g
 - Provider ： 3台
-  - Provider-small: 1c2g
-  - Provider-medium: 2c4g
-  - Provider-large: 3c6g
+  - Provider-small: 1c2g 运行端口 20880
+  - Provider-medium: 2c4g 运行端口 20870
+  - Provider-large: 3c6g 运行端口 20890
 - 每个 Provider 的服务能力(处理请求的速率)都会不定期变化：
   - 三台机器的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
   - 三台机器任意一台的单台处理能力都小于总请求量。
