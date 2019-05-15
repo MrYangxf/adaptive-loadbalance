@@ -10,9 +10,6 @@
 
 ![dubbo_architect](assets/dubbo_architecture.png)
 
-### Apache Dubbo Gateway
-
-TBD
 
 ### 题目由来
 
@@ -305,16 +302,6 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
     比赛使用的特定版本 dubbo, 需要手动安装依赖。
     ```bash
     git clone https://code.aliyun.com/middlewarerace2019/dubbo-internal
-    mvn clean install -Dmaven.test.skip=true
-    ```
-    
-- [internal-gateway](https://code.aliyun.com/middlewarerace2019/internal-gateway) 
-  
-    执行调用的consumer，接收压测程序请求，加载选手实现[workspace-gateway](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance/tree/master/workspace-gateway)部分的 LoadBalance 扩展，按照扩展选择相应 Provider 完成调用，返回结果成功(200)或失败(500)。启动程序已经被集成至 internal-service，本地开发无需关心。
-   
-    由于代码对比赛支持做了一定的修改，所以需要手动安装依赖：
-    ```bash
-    git clone https://code.aliyun.com/middlewarerace2019/internal-gateway
     mvn clean install -Dmaven.test.skip=true
     ```
    
