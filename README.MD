@@ -237,6 +237,7 @@ resources/META-INF/services/org.apache.dubbo.remoting.transport.RequestLimiter
 
 #### org.apache.dubbo.rpc.Filter
 
+
 ```java
 @SPI
 public interface Filter {
@@ -251,6 +252,8 @@ public interface Filter {
 ```
 
 **接口实现示例**
+
+客户端过滤器
 
 ```java
 @Activate(group = Constants.CONSUMER)
@@ -269,10 +272,30 @@ public class TestClientFilter implements Filter {
 }
 ```
 
+服务端过滤器
+
+```java
+@Activate(group = Constants.PROVIDER)
+public class TestServerFilter implements Filter {
+    @Override
+    public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        try{
+            Result result = invoker.invoke(invocation);
+            return result;
+        }catch (Exception e){
+            // do sth
+            throw e;
+        }
+
+    }
+}
+```
+
 **添加 SPI 声明文件**
 
 ```
 com.aliware.tianchi.TestClientFilter
+com.aliware.tianchi.TestServerFilter
 ```
 
 文件内容只有一行，存放位置需要固定在： 
@@ -286,12 +309,13 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 ### 要求和限制
 
-1. 不允许修改 dubbo/gateway 相关配置；
+1. 不允许修改 Dubbo/Gateway 相关配置；
 2. 不允许使用脚本或者其他方式替换 provider/gateway 服务；
-3. 不允许直接使用 Provider 的配置信息，如 averageRTT , maxConcurrency 配置, 允许自行统计和计算；
-4. 需要提供通用的算法实现，不允许以 hardcode 流量比例的方式来分配流量；
-5. Gateway 和 Provider 的 JVM 参数和其他参数不允许修改。
-6. 不允许使用任何 hack 的方式作弊，每次提交评测的代码都会存档，作弊会被取消参赛资格。
+3. 不允许使用 Provider 服务内的相关信息，如配置的 averageRTT/ maxConcurrency 等, 允许自行统计和计算；
+4. 不允许引入外部依赖，如果对开源代码有所借鉴，可小部分 copy；
+5. 需要提供通用的算法实现，不允许以 hardcode 流量比例的方式来分配流量；
+6. Gateway 和 Provider 的 JVM 参数和其他参数不允许修改。
+7. 不允许使用任何 hack 的方式作弊，每次提交评测的代码都会存档，作弊会被取消参赛资格。
 
 ### 开发环境搭建
 
@@ -302,6 +326,16 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
     比赛使用的特定版本 dubbo, 需要手动安装依赖。
     ```bash
     git clone https://code.aliyun.com/middlewarerace2019/dubbo-internal
+    mvn clean install -Dmaven.test.skip=true
+    ```
+    
+- [internal-gateway](https://code.aliyun.com/middlewarerace2019/internal-gateway) 
+  
+    执行调用的consumer，接收压测程序请求，加载选手实现[workspace-gateway](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance/tree/master/workspace-gateway)部分的 LoadBalance 扩展，按照扩展选择相应 Provider 完成调用，返回结果成功(200)或失败(500)。启动程序已经被集成至 internal-service，本地开发无需关心。
+   
+    由于代码对比赛支持做了一定的修改，所以需要手动安装依赖：
+    ```bash
+    git clone https://code.aliyun.com/middlewarerace2019/internal-gateway
     mvn clean install -Dmaven.test.skip=true
     ```
    
@@ -317,7 +351,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 - [adaptive-loadbalance](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance)
 
-  选手按照题目提供的接口，实现 provider-consumer 协同的自适应负载均衡策略。
+    选手按照题目提供的接口，实现 provider-consumer 协同的自适应负载均衡策略。
 
 #### 本地开发配置
 
@@ -341,11 +375,26 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
         <version>1.0.0</version>
     </dependency>
     ```
-- 配置 hosts，将 `provider-small` 指向本地 IP (非 localhost/127.0.0.1),或者在`com.aliware.tianchi.netty.HttpProcessHandler#buildUrls`将`provider-small`修改为本地IP,也可以在`buildUrls`中添加多个不同的 Provider 地址。
+- 配置 hosts，指向本地 IP ,或者将 internal-service 项目中的 `com.aliware.tianchi.netty.HttpProcessHandler#buildUrls` 相关地址修改为本地 IP,也可以在 `buildUrls` 中添加多个不同的 Provider 地址。
+  ```
+  127.0.0.1 provider-small
+  127.0.0.1 provider-medium
+  127.0.0.1 provider-large
+  ```
 - 构建 demo 的 workspace 项目
-- 运行 `internal-service`项目中的`com.aliware.tianchi.MyProvider`启动 Provider
-- 运行 `internal-service`项目中的`com.aliware.tianchi.MyConsumer`启动 Consumer
-- 打开浏览器[http://localhost:8087/call](http://localhost:8087/call)，显示`OK`即表示配置成功。
+- 运行 `internal-service` 项目中的 `com.aliware.tianchi.MyProvider` 启动 Provider，为了模拟负载均衡场景，需要启动三个 Provider，分别指定启动参数 `-Dquota=large`、`-Dquota=medium`、`-Dquota=small`
+- 运行 `internal-service` 项目中的 `com.aliware.tianchi.MyConsumer` 启动 Consumer
+- 打开浏览器 [http://localhost:8087/call](http://localhost:8087/call)，显示`OK`即表示配置成功。
+
+### 本地选手自测
+
+在 `internal-service` 项目中存放了一个 wrk.lua 脚本，选手可以在该项目根目录下执行
+
+```
+wrk -t2 -c256 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invoke
+```
+
+进行压测，压测前请确认本机已安装压测工具 wrk
 
 ## 评测
 
@@ -365,6 +414,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
   - 三台机器的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
   - 三台机器任意一台的单台处理能力都小于总请求量。
 
+### 评测流程
 
 流程分为预热和正式评测两部分，预热部分不计算成绩，正式评测部分计算成绩。
 
