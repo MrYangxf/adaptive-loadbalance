@@ -328,16 +328,6 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
     git clone https://code.aliyun.com/middlewarerace2019/dubbo-internal
     mvn clean install -Dmaven.test.skip=true
     ```
-    
-- [internal-gateway](https://code.aliyun.com/middlewarerace2019/internal-gateway) 
-  
-    执行调用的consumer，接收压测程序请求，加载选手实现[workspace-gateway](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance/tree/master/workspace-gateway)部分的 LoadBalance 扩展，按照扩展选择相应 Provider 完成调用，返回结果成功(200)或失败(500)。启动程序已经被集成至 internal-service，本地开发无需关心。
-   
-    由于代码对比赛支持做了一定的修改，所以需要手动安装依赖：
-    ```bash
-    git clone https://code.aliyun.com/middlewarerace2019/internal-gateway
-    mvn clean install -Dmaven.test.skip=true
-    ```
    
 - [internal-service](https://code.aliyun.com/middlewarerace2019/internal-service)
 
@@ -405,7 +395,7 @@ wrk -t2 -c256 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invok
 
 所有程序均执行在 docker 中，docker 镜像由评测程序自动根据选手的代码仓库构建，不需要自行构建，若需要自行构建测试，请参考[docker](https://code.aliyun.com/middlewarerace2019/docker/tree/master)
 
-- Gateway ： 1 台 4c4g
+- Consumer ： 1 台 4c4g
 - Provider ： 3台
   - Provider-small: 1c2g 运行端口 20880
   - Provider-medium: 2c4g 运行端口 20870
