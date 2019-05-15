@@ -317,10 +317,11 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 - [adaptive-loadbalance](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance)
 
-    选手按照题目提供的接口，实现 provider-consumer 协同的自适应负载均衡策略。
+  选手按照题目提供的接口，实现 provider-consumer 协同的自适应负载均衡策略。
 
-#### 调试配置
+#### 本地开发配置
 
+- fork + clone 项目
 - 在`internal-service`项目中的`service-consumer/pom.xml`添加`workspace-gateway`依赖
 
     ```xml
@@ -347,6 +348,9 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 - 打开浏览器[http://localhost:8087/call](http://localhost:8087/call)，显示`OK`即表示配置成功。
 
 ## 评测
+
+提交评测前，选手需要添加`middlewarerace2019`为要评测的代码仓库 reporter ，否则无法进行评测。
+
 ### 环境
 ![benchmark_architect](assets/benchmark_architect.png)
 
@@ -361,7 +365,6 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
   - 三台机器的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
   - 三台机器任意一台的单台处理能力都小于总请求量。
 
-### 
 
 流程分为预热和正式评测两部分，预热部分不计算成绩，正式评测部分计算成绩。
 
