@@ -317,7 +317,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 6. Gateway 和 Provider 的 JVM 参数和其他参数不允许修改。
 7. 不允许使用任何 hack 的方式作弊，每次提交评测的代码都会存档，作弊会被取消参赛资格。
 
-### 开发环境搭建
+### 快速搭建开发环境
 
 #### 依赖项目
 
@@ -345,26 +345,8 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
 #### 本地开发配置
 
-- fork + clone 项目
-- 在`internal-service`项目中的`service-consumer/pom.xml`添加`workspace-gateway`依赖
+- fork 本项目, clone 自己的仓库到本地
 
-    ```xml
-    <dependency>
-        <artifactId>workspace-gateway</artifactId>
-        <groupId>com.aliware.tianchi</groupId>
-        <version>1.0.0</version>
-    </dependency>
-    ```
-    
-- 在`internal-service`项目中的`service-provider/pom.xml`添加`workspace-provider`依赖
-
-    ```xml
-    <dependency>
-        <artifactId>workspace-provider</artifactId>
-        <groupId>com.aliware.tianchi</groupId>
-        <version>1.0.0</version>
-    </dependency>
-    ```
 - 配置 hosts，指向本地 IP ,或者将 internal-service 项目中的 `com.aliware.tianchi.netty.HttpProcessHandler#buildUrls` 相关地址修改为本地 IP,也可以在 `buildUrls` 中添加多个不同的 Provider 地址。
   ```
   127.0.0.1 provider-small
@@ -376,12 +358,12 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 - 运行 `internal-service` 项目中的 `com.aliware.tianchi.MyConsumer` 启动 Consumer
 - 打开浏览器 [http://localhost:8087/call](http://localhost:8087/call)，显示`OK`即表示配置成功。
 
-### 本地选手自测
+#### 本地压测
 
 在 `internal-service` 项目中存放了一个 wrk.lua 脚本，选手可以在该项目根目录下执行
 
 ```
-wrk -t2 -c256 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invoke
+wrk -t4 -c1024 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invoke
 ```
 
 进行压测，压测前请确认本机已安装压测工具 wrk
@@ -403,6 +385,8 @@ wrk -t2 -c256 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invok
 - 每个 Provider 的服务能力(处理请求的速率)都会不定期变化：
   - 三台机器的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
   - 三台机器任意一台的单台处理能力都小于总请求量。
+  
+本地或 ecs 使用 docker 模拟真实评测可参考 [benchmarker](https://code.aliyun.com/yinwoods/benchmarker)
 
 ### 评测流程
 
@@ -433,3 +417,5 @@ wrk -t2 -c256 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invok
 |  1   | 1,000,000  |  9,999   |
 |  2   | 1,000,000  |  9,998   |
 |  3   |  800,000   |  10,000  |
+
+
