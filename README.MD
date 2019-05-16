@@ -329,7 +329,7 @@ com.aliware.tianchi.TestServerFilter
    
 - [internal-service](https://code.aliyun.com/middlewarerace2019/internal-service)
 
-    内置服务，处理来自 Consumer 的请求，加载选手实现的负载均衡算法 [provider 部分](https://code.aliyun.com/middlewarerace2019/adaptive-loadbalance/tree/master/workspace-provider)。已经由赛题官方提供，开发过程不需要修改，只需要安装依赖。
+    内置服务，负责加载选手实现的负载均衡算法，启动 Consumer 和 Provider 程序。已经由赛题官方提供，开发过程不需要修改，只需要安装依赖。
     ```bash
     git clone https://code.aliyun.com/middlewarerace2019/internal-service.git
     mvn clean install -Dmaven.test.skip=true
@@ -381,8 +381,8 @@ wrk -t4 -c1024 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invo
   - Provider-medium: 2c4g 运行端口 20870
   - Provider-large: 3c6g 运行端口 20890
 - 每个 Provider 的服务能力(处理请求的速率)都会不定期变化：
-  - 三台机器的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
-  - 三台机器任意一台的单台处理能力都小于总请求量。
+  - 三个 Provider 的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
+  - 任意一个 Provider 的单机处理能力都小于总请求量。
   
 本地或 ecs 使用 docker 模拟真实评测可参考 [benchmarker](https://code.aliyun.com/middlewarerace2019/benchmarker)
 
