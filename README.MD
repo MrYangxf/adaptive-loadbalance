@@ -325,7 +325,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
     比赛使用的特定版本 dubbo, 需要手动安装依赖。
     ```bash
-    git clone https://code.aliyun.com/middlewarerace2019/dubbo-internal
+    git clone https://code.aliyun.com/middlewarerace2019/dubbo-internal.git
     mvn clean install -Dmaven.test.skip=true
     ```
    
