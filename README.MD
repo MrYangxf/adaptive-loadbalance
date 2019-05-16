@@ -386,7 +386,7 @@ wrk -t4 -c1024 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invo
   - 三台机器的总处理能力会分别在小于/约等于/大于请求量三个状态变动；
   - 三台机器任意一台的单台处理能力都小于总请求量。
   
-本地或 ecs 使用 docker 模拟真实评测可参考 [benchmarker](https://code.aliyun.com/yinwoods/benchmarker)
+本地或 ecs 使用 docker 模拟真实评测可参考 [benchmarker](https://code.aliyun.com/middlewarerace2019/benchmarker)
 
 ### 评测流程
 
