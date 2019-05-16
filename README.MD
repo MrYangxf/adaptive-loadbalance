@@ -75,13 +75,15 @@ Consumer 在接收到客户端请求以后，会生成一个随机字符串，�
 ### 项目结构
 
 - internal-dubbo dubbo 依赖，不允许修改，评测时不依赖选手编译的 jar 包；
-- internal-gateway gateway 依赖，不允许修改，评测时不依赖选手编译的 jar 包；
+  - 此次比赛的 Dubbo 版本是私有版本，具备开源 Dubbo 没有的一些扩展接口，选手需要下载源码，本地构建，不应该依赖远程仓库拉取依赖
 - internal-service 服务的接口定义和实现，不允许修改，评测时不依赖选手编译的 jar 包；
-- workspace 选手进行开发的模块, 评测时会以 jar 包依赖的方式加载。
+  - 包含了服务端和客户端，服务端包含了负载动态变化的逻辑，开放给选手自己本地测试，禁止选手设计一个负载均衡算法来 hack 变化的过程；选手可以本地启动服务端客户端示例进行本地测试
+- adaptive-loadbalance(workspace) 选手进行开发的模块, 评测时会以 jar 包依赖的方式加载。
+  - 在选手本地开发阶段时，可以直接在 internal-service 的相应模块声明该 maven 依赖
 
 ### 开发接口
 
-#### com.aliware.tianchi.UserLoadBalance
+### com.aliware.tianchi.UserLoadBalance
 
 **负载均衡接口**，用户需要更改该接口的实现，在示例代码中，实现了一个随机负载均衡算法
 
@@ -97,7 +99,7 @@ public class UserLoadBalance implements LoadBalance {
 
 ### 辅助接口
 
-#### org.apache.dubbo.rpc.listener.CallbackListener
+### org.apache.dubbo.rpc.listener.CallbackListener
 
 ```java
 @SPI
@@ -121,15 +123,13 @@ public class CallbackListenerImpl implements CallbackListener {
 
 **添加 SPI 声明文件**
 
+resources/META-INF/services/org.apache.dubbo.rpc.listener.CallbackListener
+
 ```
 com.aliware.tianchi.CallbackListenerImpl
 ```
 
-文件内容只有一行，存放位置需要固定在： 
-
-resources/META-INF/services/org.apache.dubbo.rpc.listener.CallbackListener
-
-#### org.apache.dubbo.rpc.service.CallbackService
+### org.apache.dubbo.rpc.service.CallbackService
 
 ```java
 @SPI
@@ -138,7 +138,7 @@ public interface CallbackService {
 }
 ```
 
-服务端扩展接口，用于接收客户端 CallbackListener 的注册，并执行推送能力。在比赛中，选手只需要关心推送的内容，注册这一行为由赛题本身保证。
+服务端扩展接口，用于接收客户端 CallbackListener 的注册，并执行推送能力。
 
 **接口实现示例**
 
@@ -182,17 +182,15 @@ public class CallbackServiceImpl implements CallbackService {
 
 **添加 SPI 声明文件**
 
+resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
+
 ```
 com.aliware.tianchi.CallbackServiceImpl
 ```
 
-文件内容只有一行，存放位置需要固定在： 
+> 以上 CallbackListener 和 CallbackService 结合使用，实现了一个服务提供者每 5 秒向客户端推送服务器时间的能力，选手可以自行扩展。
 
-resources/META-INF/services/org.apache.dubbo.rpc.service.CallbackService
-
-以上 CallbackListener 和 CallbackService 结合使用，实现了一个服务提供者每 5 秒向客户端推送服务器时间的能力，选手可以自行扩展。
-
-#### org.apache.dubbo.remoting.transport.RequestLimiter
+### org.apache.dubbo.remoting.transport.RequestLimiter
 
 ```java
 @SPI
@@ -224,18 +222,17 @@ public class TestRequestLimiter implements RequestLimiter {
 - false 不提交给服务端业务线程池直接返回，客户端可以在 Filter 中捕获 RpcException
 - true 不限流
 
-
 **添加 SPI 声明文件**
+
+resources/META-INF/services/org.apache.dubbo.remoting.transport.RequestLimiter
 
 ```
 com.aliware.tianchi.TestRequestLimiter
 ```
 
-文件内容只有一行，存放位置需要固定在： 
+> 限流接口开放给选手，旨在让选手保护服务端不被击垮，非强制使用
 
-resources/META-INF/services/org.apache.dubbo.remoting.transport.RequestLimiter
-
-#### org.apache.dubbo.rpc.Filter
+### org.apache.dubbo.rpc.Filter
 
 
 ```java
@@ -293,19 +290,20 @@ public class TestServerFilter implements Filter {
 
 **添加 SPI 声明文件**
 
+resources/META-INF/services/org.apache.dubbo.rpc.Filter
+
 ```
 com.aliware.tianchi.TestClientFilter
 com.aliware.tianchi.TestServerFilter
 ```
 
-文件内容只有一行，存放位置需要固定在： 
-
-resources/META-INF/services/org.apache.dubbo.rpc.Filter
+> 选手无法更改服务消费者和服务提供者的逻辑，但可以借助 Filter 进行 AOP 控制。禁止在服务端获取 salt 值提前返回，需要保证请求到达真实服务。
 
 ### 接口说明
 
 - 开发接口固定为 `UserLoadBalance`，选手可以修改其实现，但不能重命名、移动其位置，包括其 SPI 定义文件，否则评测程序无法正常加载选手的代码
 - 辅助接口不强制选手使用，只是为了方便一部分负载均衡算法的实现而设计的，一些算法客户端需要依赖服务端的信息做决策
+- Dubbo 拥有众多的扩展点，选手可以在不影响赛题题意的前提下适当使用，详情参考 Dubbo 官方文档：用户文档 -> 开发者指南 -> [SPI 扩展实现](http://dubbo.incubator.apache.org/zh-cn/docs/dev/impls/protocol.html)
 
 ### 要求和限制
 
@@ -343,7 +341,7 @@ resources/META-INF/services/org.apache.dubbo.rpc.Filter
 
     选手按照题目提供的接口，实现 provider-consumer 协同的自适应负载均衡策略。
 
-#### 本地开发配置
+#### 本地开发
 
 - fork 本项目, clone 自己的仓库到本地
 
@@ -417,5 +415,4 @@ wrk -t4 -c1024 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invo
 |  1   | 1,000,000  |  9,999   |
 |  2   | 1,000,000  |  9,998   |
 |  3   |  800,000   |  10,000  |
-
 
