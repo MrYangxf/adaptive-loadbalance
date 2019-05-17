@@ -307,6 +307,7 @@ com.aliware.tianchi.TestServerFilter
 
 ### 要求和限制
 
+0. 题目语言限定为 Java ；
 1. 不允许修改 Dubbo/Gateway 相关配置；
 2. 不允许使用脚本或者其他方式替换 provider/gateway 服务；
 3. 不允许使用 Provider 服务内的相关信息，如配置的 averageRTT/ maxConcurrency 等, 允许自行统计和计算；
