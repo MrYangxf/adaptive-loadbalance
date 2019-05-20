@@ -387,6 +387,15 @@ wrk -t4 -c1024 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invo
   
 本地或 ecs 使用 docker 模拟真实评测可参考 [benchmarker](https://code.aliyun.com/middlewarerace2019/benchmarker)
 
+#### 环境和启动参数
+
+| 程序 | 宿主机配置 | JVM参数 | Docker资源限制参数 |
+| :--: | :--------: | :------: |  :------: |
+|  consumer         | Intel Xeon(Skylake) Platinum 8163, 2.5 GHz,1.5 Gbps, 500k PPS | -Xms4G  -Xmx4G  |  -m 4g   |
+|  provider-small   | Intel Xeon(Skylake) Platinum 8163, 2.5 GHz,1.0 Gbps, 300k PPS | -Xms1G  -Xmx1G  |  --cpuset-cpus="0" -m 2g      |
+|  provider-medium  | Intel Xeon(Skylake) Platinum 8163, 2.5 GHz,1.5 Gbps, 500k PPS | -Xms2G  -Xmx2G  |  --cpuset-cpus="0,1" -m 4g    |
+|  provider-large   | Intel Xeon(Skylake) Platinum 8163, 2.5 GHz,1.5 Gbps, 500k PPS | -Xms3G  -Xmx3G  |  --cpuset-cpus="0,1,2" -m 6g  |
+
 ### 评测流程
 
 流程分为预热和正式评测两部分，预热部分不计算成绩，正式评测部分计算成绩。
