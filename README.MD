@@ -369,7 +369,7 @@ wrk -t4 -c1024 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invo
 
 ## 评测
 
-提交评测前，选手需要添加`middlewarerace2019`为要评测的代码仓库 reporter ，否则无法进行评测。
+提交评测前，选手需要添加`middleware2019`为要评测的代码仓库 reporter ，否则无法进行评测。
 
 ### 环境
 ![benchmark_architect](assets/benchmark_architect.png)
