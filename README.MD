@@ -389,6 +389,11 @@ wrk -t4 -c1024 -d60s -T5 --script=./wrk.lua --latency http://localhost:8087/invo
 
 #### 环境和启动参数
 
+- JDK 版本： Openjdk 1.8.0_212
+- GC collector : Parallel Scavenge + Parallel Old
+- 宿主机 OS:  4.19.34-11.al7.x86_64
+- Docker 版本: 1.13.1
+
 | 程序 | 宿主机配置 | JVM参数 | Docker资源限制参数 |
 | :--: | :--------: | :------: |  :------: |
 |  consumer         | Intel Xeon(Skylake) Platinum 8163, 2.5 GHz,1.5 Gbps, 500k PPS | -Xms4G  -Xmx4G  |  -m 4g   |
