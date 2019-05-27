@@ -16,6 +16,12 @@
             <groupId>com.aliware.tianchi</groupId>
             <artifactId>workspace-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
 </project>
