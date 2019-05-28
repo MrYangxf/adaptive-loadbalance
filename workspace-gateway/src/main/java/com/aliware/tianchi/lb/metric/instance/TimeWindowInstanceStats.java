@@ -61,14 +61,14 @@ public class TimeWindowInstanceStats implements InstanceStats {
     }
 
     @Override
-    public void success(int responseMs) {
+    public void success(long responseMs) {
         long s = getCurrentSeconds();
         totalResponseMsCounter.add(s, responseMs);
         numberOfRequestsCounter.increment(s);
     }
 
     @Override
-    public void failure(int responseMs) {
+    public void failure(long responseMs) {
         long s = getCurrentSeconds();
         totalResponseMsCounter.add(s, responseMs);
         numberOfRequestsCounter.increment(s);

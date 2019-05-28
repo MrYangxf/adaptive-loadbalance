@@ -13,13 +13,13 @@ public interface InstanceStats extends Serializable {
      * 请求成功
      * @param responseMs 响应时间
      */
-    void success(int responseMs);
+    void success(long responseMs);
 
     /**
      * 请求失败
      * @param responseMs 响应时间
      */
-    void failure(int responseMs);
+    void failure(long responseMs);
 
     /**
      * 请求被拒绝

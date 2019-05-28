@@ -1,5 +1,7 @@
 package com.aliware.tianchi;
 
+import com.aliware.tianchi.lb.LBRule;
+import com.aliware.tianchi.lb.rule.ResponseTimeWeightedRule;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
@@ -7,11 +9,12 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.cluster.LoadBalance;
 
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
+
+import static com.aliware.tianchi.util.ObjectUtil.isEmpty;
 
 /**
  * @author daofeng.xjf
- *
+ * <p>
  * 负载均衡扩展接口
  * 必选接口，核心接口
  * 此类可以修改实现，不可以移动类或者修改包名
@@ -19,8 +22,18 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class UserLoadBalance implements LoadBalance {
 
+    private LBRule rule = new ResponseTimeWeightedRule();
+    
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
-        return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
+        if (isEmpty(invokers)) {
+            return null;
+        }
+        if (invokers.size() == 1) {
+            return invokers.get(0);
+        }
+        
+        return rule.select(invokers);
     }
+    
 }
