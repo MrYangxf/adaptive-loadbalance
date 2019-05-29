@@ -46,15 +46,6 @@ public class LBStatistics {
     private Map<Class<?>, Map<String, InstanceStats>> registry = new ConcurrentHashMap<>();
 
     private LBStatistics() {
-        if (statsGenerator == null) {
-            if (timeWindowStats) {
-                statsGenerator = invoker ->
-                        new TimeWindowInstanceStats(windowSize, new ServerStats(), counterFactory);
-            } else {
-                statsGenerator = invoker ->
-                        new BaseInstanceStats(new ServerStats(), System.currentTimeMillis());
-            }
-        }
     }
 
     public static Builder builder() {
@@ -66,7 +57,8 @@ public class LBStatistics {
         Class<?> interClass = invoker.getInterface();
         Map<String, InstanceStats> instanceStatsMap = registry.get(interClass);
         if (instanceStatsMap == null) {
-            Map<String, InstanceStats> newMap = registry.putIfAbsent(interClass, new ConcurrentHashMap<>());
+            instanceStatsMap = new ConcurrentHashMap<>();
+            Map<String, InstanceStats> newMap = registry.putIfAbsent(interClass, instanceStatsMap);
             if (newMap != null) {
                 instanceStatsMap = newMap;
             }
@@ -79,7 +71,8 @@ public class LBStatistics {
         String address = invoker.getUrl().getAddress();
         InstanceStats stats = instanceStatsMap.get(address);
         if (stats == null) {
-            InstanceStats newStats = instanceStatsMap.putIfAbsent(address, statsGenerator.apply(invoker));
+            stats = statsGenerator.apply(invoker);
+            InstanceStats newStats = instanceStatsMap.putIfAbsent(address, stats);
             if (newStats != null) {
                 stats = newStats;
             }
@@ -144,6 +137,15 @@ public class LBStatistics {
             stats.timeWindowStats = timeWindowStats;
             stats.windowSize = windowSize;
             stats.counterFactory = defaultIfNull(counterFactory, SkipListCounter::new);
+            if (statsGenerator == null) {
+                if (timeWindowStats) {
+                    statsGenerator = invoker ->
+                            new TimeWindowInstanceStats(windowSize, new ServerStats(), counterFactory);
+                } else {
+                    statsGenerator = invoker ->
+                            new BaseInstanceStats(new ServerStats(), System.currentTimeMillis());
+                }
+            }
             stats.statsGenerator = statsGenerator;
             return stats;
         }

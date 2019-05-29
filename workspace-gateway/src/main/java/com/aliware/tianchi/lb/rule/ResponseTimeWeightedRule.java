@@ -30,6 +30,10 @@ public class ResponseTimeWeightedRule implements LBRule {
             timeSegments[i] = sum;
         }
 
+        if (sum < size) {
+            return candidates.get(ThreadLocalRandom.current().nextInt(size));
+        }
+        
         int select = 0;
         long ra = ThreadLocalRandom.current().nextLong(sum);
         for (int i = 0; i < size; i++) {
