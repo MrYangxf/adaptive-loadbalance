@@ -1,7 +1,7 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.lb.LBRule;
-import com.aliware.tianchi.lb.rule.ResponseTimeWeightedRule;
+import com.aliware.tianchi.lb.rule.SelfAdaptiveRule;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
@@ -22,8 +22,8 @@ import static com.aliware.tianchi.util.ObjectUtil.isEmpty;
  */
 public class UserLoadBalance implements LoadBalance {
 
-    private LBRule rule = new ResponseTimeWeightedRule();
-    
+    private LBRule rule = new SelfAdaptiveRule();
+
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         if (isEmpty(invokers)) {
@@ -32,8 +32,8 @@ public class UserLoadBalance implements LoadBalance {
         if (invokers.size() == 1) {
             return invokers.get(0);
         }
-        
+
         return rule.select(invokers);
+        // return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
     }
-    
 }

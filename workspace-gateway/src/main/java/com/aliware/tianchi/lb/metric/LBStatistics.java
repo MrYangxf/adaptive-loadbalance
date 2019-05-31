@@ -1,9 +1,12 @@
 package com.aliware.tianchi.lb.metric;
 
+import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.lb.metric.instance.BaseInstanceStats;
 import com.aliware.tianchi.lb.metric.instance.TimeWindowInstanceStats;
 import com.aliware.tianchi.util.SegmentCounterFactory;
 import com.aliware.tianchi.util.SkipListCounter;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.Map;
@@ -17,8 +20,11 @@ import static com.aliware.tianchi.util.ObjectUtil.defaultIfNull;
  * @author yangxf
  */
 public class LBStatistics {
+    private static final Logger logger = LoggerFactory.getLogger(LBStatistics.class);
 
-    public static final LBStatistics STATS = LBStatistics.builder().build();
+    public static final LBStatistics STATS = LBStatistics.builder()
+                                                         .windowSize(3)
+                                                         .build();
 
     /**
      * 是否统计服务器指标，默认关闭
@@ -34,6 +40,7 @@ public class LBStatistics {
      * 是否采用时间窗口统计，默认开启
      */
     private boolean timeWindowStats = true;
+
     private long windowSize = 10;
 
     private SegmentCounterFactory counterFactory;
@@ -43,7 +50,15 @@ public class LBStatistics {
      */
     private Function<Invoker<?>, InstanceStats> statsGenerator;
 
+    /**
+     * key = interface, sub_key = address, value = InstanceStats
+     */
     private Map<Class<?>, Map<String, InstanceStats>> registry = new ConcurrentHashMap<>();
+
+    /**
+     * key = address, value = ServerStats
+     */
+    private Map<String, ServerStats> serverRegistry = new ConcurrentHashMap<>();
 
     private LBStatistics() {
     }
@@ -57,9 +72,9 @@ public class LBStatistics {
         Class<?> interClass = invoker.getInterface();
         Map<String, InstanceStats> instanceStatsMap = registry.get(interClass);
         if (instanceStatsMap == null) {
-            instanceStatsMap = new ConcurrentHashMap<>();
-            Map<String, InstanceStats> newMap = registry.putIfAbsent(interClass, instanceStatsMap);
-            if (newMap != null) {
+            Map<String, InstanceStats> newMap = new ConcurrentHashMap<>();
+            instanceStatsMap = registry.putIfAbsent(interClass, newMap);
+            if (instanceStatsMap == null) {
                 instanceStatsMap = newMap;
             }
         }
@@ -71,13 +86,35 @@ public class LBStatistics {
         String address = invoker.getUrl().getAddress();
         InstanceStats stats = instanceStatsMap.get(address);
         if (stats == null) {
-            stats = statsGenerator.apply(invoker);
-            InstanceStats newStats = instanceStatsMap.putIfAbsent(address, stats);
-            if (newStats != null) {
+            InstanceStats newStats = statsGenerator.apply(invoker);
+            stats = instanceStatsMap.putIfAbsent(address, newStats);
+            if (stats == null) {
+                ServerStats serverStats = serverRegistry.get(address);
+                if (serverStats == null) {
+                    ServerStats newServerStats = new ServerStats(invoker.getUrl().getHost());
+                    serverStats = serverRegistry.putIfAbsent(address, newServerStats);
+                    if (serverStats == null) {
+                        serverStats = newServerStats;
+                    }
+                }
+                newStats.setServerStats(serverStats);
                 stats = newStats;
             }
         }
         return stats;
+    }
+
+    public Map<Class<?>, Map<String, InstanceStats>> getRegistry() {
+        return registry;
+    }
+
+    public void updateRuntimeInfo(String address, RuntimeInfo runtimeInfo) {
+        checkNotNull(address, "address");
+        ServerStats serverStats = serverRegistry.get(address);
+        System.out.println(address);
+        if (serverStats != null) {
+            serverStats.setRuntimeInfo(runtimeInfo);
+        }
     }
 
     public void evict(Invoker<?> invoker) {
@@ -140,10 +177,13 @@ public class LBStatistics {
             if (statsGenerator == null) {
                 if (timeWindowStats) {
                     statsGenerator = invoker ->
-                            new TimeWindowInstanceStats(windowSize, new ServerStats(), counterFactory);
+                            new TimeWindowInstanceStats(windowSize,
+                                                        null,
+                                                        invoker.getUrl().getAddress(),
+                                                        counterFactory);
                 } else {
                     statsGenerator = invoker ->
-                            new BaseInstanceStats(new ServerStats(), System.currentTimeMillis());
+                            new BaseInstanceStats(null, System.currentTimeMillis());
                 }
             }
             stats.statsGenerator = statsGenerator;

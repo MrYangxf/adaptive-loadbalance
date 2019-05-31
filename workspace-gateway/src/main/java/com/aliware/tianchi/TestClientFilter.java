@@ -4,7 +4,10 @@ import com.aliware.tianchi.lb.metric.InstanceStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
+import org.apache.dubbo.remoting.exchange.ResponseCallback;
 import org.apache.dubbo.rpc.*;
+import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
+import org.apache.dubbo.rpc.support.RpcUtils;
 
 /**
  * @author daofeng.xjf
@@ -20,6 +23,32 @@ public class TestClientFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        boolean isAsync = RpcUtils.isAsync(invoker.getUrl(), invocation);
+        if (isAsync) {
+            return invokeAsync(invoker, invocation);
+        } else {
+            return invokeSync(invoker, invocation);
+        }
+    }
+
+    private Result invokeAsync(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        InstanceStats stats = lbStats.getInstanceStats(invoker);
+        long startMs = System.currentTimeMillis();
+        Result result = invoker.invoke(invocation);
+        FutureAdapter<Object> f = (FutureAdapter<Object>) RpcContext.getContext().getFuture();
+        if (f != null) {
+            f.whenComplete((x, y) -> {
+                stats.success(System.currentTimeMillis() - startMs);
+            }).exceptionally(t -> {
+                stats.failure(System.currentTimeMillis() - startMs);
+                // todo
+                return null;
+            });
+        }
+        return result;
+    }
+
+    private Result invokeSync(Invoker<?> invoker, Invocation invocation) throws RpcException {
         InstanceStats stats = lbStats.getInstanceStats(invoker);
         long startMs = System.currentTimeMillis();
         try {
@@ -32,3 +61,4 @@ public class TestClientFilter implements Filter {
         }
     }
 }
+    

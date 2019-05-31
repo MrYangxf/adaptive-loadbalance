@@ -1,17 +1,15 @@
 package com.aliware.tianchi.lb.metric.instance;
 
+import com.aliware.tianchi.common.util.OSUtil;
 import com.aliware.tianchi.lb.metric.ServerStats;
-import org.junit.Test;
 
 import java.util.concurrent.ThreadLocalRandom;
-
-import static org.junit.Assert.*;
 
 public class TimeWindowInstanceStatsTest {
 
     public static void main(String[] args) throws InterruptedException {
         int s = 5;
-        TimeWindowInstanceStats stats = new TimeWindowInstanceStats(s, new ServerStats());
+        TimeWindowInstanceStats stats = new TimeWindowInstanceStats(s, new ServerStats(""), "");
         for (int i = 0; i < 10; i++) {
             new Thread(() -> {
                 for (int j = 0; j < 1000000; j++) {

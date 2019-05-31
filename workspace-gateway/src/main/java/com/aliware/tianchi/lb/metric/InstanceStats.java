@@ -1,5 +1,6 @@
 package com.aliware.tianchi.lb.metric;
 
+
 import java.io.Serializable;
 
 /**
@@ -11,12 +12,14 @@ public interface InstanceStats extends Serializable {
 
     /**
      * 请求成功
+     *
      * @param responseMs 响应时间
      */
     void success(long responseMs);
 
     /**
      * 请求失败
+     *
      * @param responseMs 响应时间
      */
     void failure(long responseMs);
@@ -30,7 +33,7 @@ public interface InstanceStats extends Serializable {
      * 清理统计信息
      */
     void clean();
-    
+
     long getAvgResponseMs();
 
     long getThroughput();
@@ -45,4 +48,7 @@ public interface InstanceStats extends Serializable {
 
     ServerStats getServerStats();
 
+    void setServerStats(ServerStats serverStats);
+
+    String getAddress();
 }
