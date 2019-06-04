@@ -132,7 +132,6 @@ public final class OSUtil {
             }
         } catch (IOException e) {
             // ...
-            e.printStackTrace();
         } finally {
             CPUS = cpus;
         }

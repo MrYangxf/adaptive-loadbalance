@@ -1,6 +1,6 @@
 package com.aliware.tianchi;
 
-import com.aliware.tianchi.common.util.OSUtil;
+import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
@@ -18,11 +18,13 @@ import java.util.concurrent.TimeUnit;
  */
 public class CallbackServiceImpl implements CallbackService {
 
+    private final NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
+
     public CallbackServiceImpl() {
         Executors.newSingleThreadScheduledExecutor()
                  .scheduleWithFixedDelay(() -> {
                      if (!listeners.isEmpty()) {
-                         String msg = OSUtil.newRuntimeInfo().toString();
+                         String msg = helper.getCurrent().toString();
                          for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                              try {
                                  entry.getValue().receiveServerMsg(msg);
@@ -31,7 +33,7 @@ public class CallbackServiceImpl implements CallbackService {
                              }
                          }
                      }
-                 }, 3000, 3000, TimeUnit.MILLISECONDS);
+                 }, 1000, 1000, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -43,6 +45,6 @@ public class CallbackServiceImpl implements CallbackService {
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
-        listener.receiveServerMsg(OSUtil.newRuntimeInfo().toString()); // send notification for change
+        // listener.receiveServerMsg(helper.getCurrent().toString()); // send notification for change
     }
 }

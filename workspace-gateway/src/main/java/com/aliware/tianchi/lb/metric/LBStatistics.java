@@ -3,6 +3,7 @@ package com.aliware.tianchi.lb.metric;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.lb.metric.instance.BaseInstanceStats;
 import com.aliware.tianchi.lb.metric.instance.TimeWindowInstanceStats;
+import com.aliware.tianchi.util.FastSkipListCounter;
 import com.aliware.tianchi.util.SegmentCounterFactory;
 import com.aliware.tianchi.util.SkipListCounter;
 import org.apache.dubbo.common.logger.Logger;
@@ -23,6 +24,7 @@ public class LBStatistics {
     private static final Logger logger = LoggerFactory.getLogger(LBStatistics.class);
 
     public static final LBStatistics STATS = LBStatistics.builder()
+                                                         .counterFactory(SkipListCounter::new)
                                                          .windowSize(3)
                                                          .build();
 
@@ -111,7 +113,6 @@ public class LBStatistics {
     public void updateRuntimeInfo(String address, RuntimeInfo runtimeInfo) {
         checkNotNull(address, "address");
         ServerStats serverStats = serverRegistry.get(address);
-        System.out.println(address);
         if (serverStats != null) {
             serverStats.setRuntimeInfo(runtimeInfo);
         }

@@ -73,8 +73,8 @@ public class TimeWindowInstanceStats implements InstanceStats {
     @Override
     public void failure(long responseMs) {
         long s = getCurrentSeconds();
-        totalResponseMsCounter.add(s, responseMs);
-        numberOfRequestsCounter.increment(s);
+        // totalResponseMsCounter.add(s, responseMs);
+        // numberOfRequestsCounter.increment(s);
         numberOfFailuresCounter.increment(s);
     }
 
@@ -105,8 +105,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
     public long getThroughput() {
         long high = getCurrentSeconds(),
                 low = high - intervalSeconds;
-        return (numberOfRequestsCounter.sum(low, true, high, false) -
-                numberOfFailuresCounter.sum(low, high)) / intervalSeconds;
+        return numberOfRequestsCounter.sum(low, true, high, false) / intervalSeconds;
     }
 
     @Override
