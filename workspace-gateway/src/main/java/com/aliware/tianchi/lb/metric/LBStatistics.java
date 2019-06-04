@@ -3,7 +3,6 @@ package com.aliware.tianchi.lb.metric;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.lb.metric.instance.BaseInstanceStats;
 import com.aliware.tianchi.lb.metric.instance.TimeWindowInstanceStats;
-import com.aliware.tianchi.util.FastSkipListCounter;
 import com.aliware.tianchi.util.SegmentCounterFactory;
 import com.aliware.tianchi.util.SkipListCounter;
 import org.apache.dubbo.common.logger.Logger;
