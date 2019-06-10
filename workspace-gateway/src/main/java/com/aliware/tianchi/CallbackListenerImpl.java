@@ -3,6 +3,8 @@ package com.aliware.tianchi;
 import com.aliware.tianchi.common.util.OSUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.lb.metric.LBStatistics;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 
@@ -15,12 +17,14 @@ import org.apache.dubbo.rpc.listener.CallbackListener;
  */
 public class CallbackListenerImpl implements CallbackListener {
 
+    private static final Logger logger = LoggerFactory.getLogger(CallbackListenerImpl.class);
+
     @Override
     public void receiveServerMsg(String msg) {
         String remoteAddressString = RpcContext.getContext().getRemoteAddressString();
         RuntimeInfo runtimeInfo = OSUtil.newRuntimeInfo(msg);
         LBStatistics.STATS.updateRuntimeInfo(remoteAddressString, runtimeInfo);
-        System.out.println(String.format("update " + remoteAddressString + " runtime info to %s", runtimeInfo));
+        logger.info(String.format("update " + remoteAddressString + " runtime info to %s", runtimeInfo));
     }
 
 }
