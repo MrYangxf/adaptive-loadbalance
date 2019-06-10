@@ -27,7 +27,6 @@ public class WeightedLoadAndErrorRateRule extends SelfAdaptiveRule {
         for (Map.Entry<String, InstanceStats> statsEntry : statsMap.entrySet()) {
             String address = statsEntry.getKey();
             InstanceStats stats = statsEntry.getValue();
-            logger.info(stats.toString());
 
             long rejections = stats.getNumberOfRejections();
             long notSuccesses = stats.getNumberOfFailures() + rejections;
@@ -41,6 +40,7 @@ public class WeightedLoadAndErrorRateRule extends SelfAdaptiveRule {
 
             ServerStats serverStats = stats.getServerStats();
             RuntimeInfo info = serverStats.getRuntimeInfo();
+            logger.info(stats.toString() + ", runtime info: " + info);
             if (nonNull(info)) {
                 double processCpuLoad = info.getProcessCpuLoad();
                 double w = 1 / (processCpuLoad + 1) + 1 / (faiRate + 1);
