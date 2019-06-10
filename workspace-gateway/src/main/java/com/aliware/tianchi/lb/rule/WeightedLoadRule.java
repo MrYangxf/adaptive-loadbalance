@@ -26,10 +26,10 @@ public class WeightedLoadRule extends SelfAdaptiveRule {
         for (Map.Entry<String, InstanceStats> statsEntry : statsMap.entrySet()) {
             String address = statsEntry.getKey();
             InstanceStats stats = statsEntry.getValue();
-            logger.info(stats.toString());
             int serverWeight = DEFAULT_WEIGHT;
             ServerStats serverStats = stats.getServerStats();
             RuntimeInfo info = serverStats.getRuntimeInfo();
+            logger.info(stats.toString() + ", runtime info: " + info);
             if (nonNull(info)) {
                 double processCpuLoad = info.getProcessCpuLoad();
                 serverWeight = (int) (serverWeight / (processCpuLoad + DEFAULT_IDLE_LOAD));

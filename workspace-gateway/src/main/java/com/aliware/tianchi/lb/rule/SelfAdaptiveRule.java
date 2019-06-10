@@ -109,7 +109,6 @@ public class SelfAdaptiveRule implements LBRule {
         for (Map.Entry<String, InstanceStats> statsEntry : statsMap.entrySet()) {
             String address = statsEntry.getKey();
             InstanceStats stats = statsEntry.getValue();
-            logger.info(stats.toString());
 
             long rejections = stats.getNumberOfRejections();
             long notSuccesses = stats.getNumberOfFailures() + rejections;
@@ -123,6 +122,7 @@ public class SelfAdaptiveRule implements LBRule {
 
             ServerStats serverStats = stats.getServerStats();
             RuntimeInfo info = serverStats.getRuntimeInfo();
+            logger.info(stats.toString() + ", runtime info : " + info);
             if (nonNull(info)) {
                 double processCpuLoad = info.getProcessCpuLoad();
                 loadTotal += processCpuLoad;
