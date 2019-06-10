@@ -1,4 +1,4 @@
-package com.aliware.tianchi.util;
+package com.aliware.tianchi.common.util;
 
 /**
  * @author yangxf

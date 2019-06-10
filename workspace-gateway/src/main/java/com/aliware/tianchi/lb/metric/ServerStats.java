@@ -2,20 +2,20 @@ package com.aliware.tianchi.lb.metric;
 
 import com.aliware.tianchi.common.util.RuntimeInfo;
 
-import static com.aliware.tianchi.util.ObjectUtil.checkNotNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 
 /**
  * @author yangxf
  */
 public class ServerStats {
 
-    private String hostname;
+    private String address;
 
     private volatile RuntimeInfo runtimeInfo;
 
-    public ServerStats(String hostname) {
-        checkNotNull(hostname, "hostname");
-        this.hostname = hostname;
+    public ServerStats(String address) {
+        checkNotNull(address, "address");
+        this.address = address;
     }
 
     public void setRuntimeInfo(RuntimeInfo runtimeInfo) {
@@ -25,8 +25,8 @@ public class ServerStats {
     public RuntimeInfo getRuntimeInfo() {
         return runtimeInfo;
     }
-    
-    public String getHostname() {
-        return hostname;
+
+    public String getAddress() {
+        return address;
     }
 }

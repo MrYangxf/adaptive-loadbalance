@@ -18,13 +18,11 @@ import java.util.concurrent.TimeUnit;
  */
 public class CallbackServiceImpl implements CallbackService {
 
-    private final NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
-
     public CallbackServiceImpl() {
         Executors.newSingleThreadScheduledExecutor()
                  .scheduleWithFixedDelay(() -> {
                      if (!listeners.isEmpty()) {
-                         String msg = helper.getCurrent().toString();
+                         String msg = NearRuntimeHelper.INSTANCE.getCurrent().toString();
                          for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                              try {
                                  entry.getValue().receiveServerMsg(msg);

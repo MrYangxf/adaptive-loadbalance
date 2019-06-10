@@ -34,6 +34,11 @@ public interface InstanceStats extends Serializable {
      */
     void clean();
 
+    /**
+     * 评估该实例最大请求数，如果未获取到服务器信息，返回 {@link Long#MAX_VALUE}
+     */
+    long evalMaxRequestsPerSeconds();
+
     long getAvgResponseMs();
 
     long getThroughput();
@@ -41,6 +46,8 @@ public interface InstanceStats extends Serializable {
     long getTotalResponseMs();
 
     long getNumberOfRequests();
+    
+    long getNumberOfRequests(long second);
 
     long getNumberOfFailures();
 

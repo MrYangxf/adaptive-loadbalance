@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
-import static com.aliware.tianchi.util.ObjectUtil.checkNotNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 
 /**
  * @author yangxf
@@ -60,6 +60,11 @@ public class BaseInstanceStats implements InstanceStats {
 
     }
 
+    @Override
+    public long evalMaxRequestsPerSeconds() {
+        return 0;
+    }
+
     public long getAvgResponseMs() {
         return getTotalResponseMs() / getNumberOfRequests();
     }
@@ -78,6 +83,11 @@ public class BaseInstanceStats implements InstanceStats {
 
     public long getNumberOfRequests() {
         return numberOfRequests.sum();
+    }
+
+    @Override
+    public long getNumberOfRequests(long second) {
+        return 0;
     }
 
     public long getNumberOfFailures() {

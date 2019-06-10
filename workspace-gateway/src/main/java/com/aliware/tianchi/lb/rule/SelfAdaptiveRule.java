@@ -18,8 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-import static com.aliware.tianchi.util.ObjectUtil.isNull;
-import static com.aliware.tianchi.util.ObjectUtil.nonNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.*;
 
 /**
  * @author yangxf
@@ -34,7 +33,11 @@ public class SelfAdaptiveRule implements LBRule {
 
     public SelfAdaptiveRule() {
         Executors.newSingleThreadScheduledExecutor()
-                 .scheduleWithFixedDelay(new WeightedTask(), 3, 3, TimeUnit.SECONDS);
+                 .scheduleWithFixedDelay(
+                         new WeightedTask(),
+                         1000,
+                         1000,
+                         TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -68,7 +71,7 @@ public class SelfAdaptiveRule implements LBRule {
 
         int[] weights = new int[size];
         Class<T> interClass = invokers.get(0).getInterface();
-        Map<String, Integer> weightMap = weightCache.get(interClass);
+        Map<String, Integer> weightMap = getWeight(interClass);
 
         if (isNull(weightMap)) {
             Arrays.fill(weights, 100);
@@ -77,11 +80,14 @@ public class SelfAdaptiveRule implements LBRule {
 
         for (int i = 0; i < size; i++) {
             Invoker<T> invoker = invokers.get(i);
-            statistics.getInstanceStats(invoker);
-            weights[i] = weightMap.get(invoker.getUrl().getAddress());
+            weights[i] = defaultIfNull(weightMap.get(invoker.getUrl().getAddress()), 1);
         }
 
         return weights;
+    }
+
+    private Map<String, Integer> getWeight(Class<?> interClass) {
+        return weightCache.get(interClass);
     }
 
     private void updateWeight(Class<?> interClass, Map<String, Integer> weightMap) {
@@ -92,21 +98,54 @@ public class SelfAdaptiveRule implements LBRule {
         weightCache.remove(interClass);
     }
 
-    private Map<String, Integer> calculate(Map<String, InstanceStats> statsMap) {
+    Map<String, Integer> calculate(Map<String, InstanceStats> statsMap, Map<String, Integer> prevWeightMap) {
         Map<String, Integer> weightMap = new HashMap<>();
+
+        double loadTotal = 0, avgTotal = 0, failTotal = 0;
+        Map<String, Long> avgMap = new HashMap<>();
+        Map<String, Double> loadMap = new HashMap<>();
+        Map<String, Long> failMap = new HashMap<>();
+
         for (Map.Entry<String, InstanceStats> statsEntry : statsMap.entrySet()) {
             String address = statsEntry.getKey();
             InstanceStats stats = statsEntry.getValue();
-            // todo: 调整加权算法
-            int serverWeight = 100;
+            logger.info(stats.toString());
+
+            long rejections = stats.getNumberOfRejections();
+            long notSuccesses = stats.getNumberOfFailures() + rejections;
+
+            failTotal += notSuccesses;
+            failMap.put(address, notSuccesses);
+
+            long avgResponseMs = stats.getAvgResponseMs();
+            avgTotal += avgResponseMs;
+            avgMap.put(address, avgResponseMs);
+
             ServerStats serverStats = stats.getServerStats();
             RuntimeInfo info = serverStats.getRuntimeInfo();
             if (nonNull(info)) {
                 double processCpuLoad = info.getProcessCpuLoad();
-                serverWeight = (int) (serverWeight / (processCpuLoad + .2d));
+                loadTotal += processCpuLoad;
+                loadMap.put(address, processCpuLoad);
             }
-            weightMap.putIfAbsent(address, serverWeight);
         }
+
+        for (String key : statsMap.keySet()) {
+            Long avg = avgMap.get(key);
+            double w1 = (avgTotal - avg) / (avgTotal + 1);
+            Long failRate = failMap.get(key);
+            double w2 = (failTotal - failRate) / (failTotal + 1);
+
+            double w3 = 0;
+            Double load = loadMap.get(key);
+            if (nonNull(load)) {
+                w3 += (loadTotal - load) / loadTotal;
+            }
+
+            int w = (int) ((w1 * .3d + w2 * .5d + w3 * .2d) * 100) + 1;
+            weightMap.put(key, w);
+        }
+
         return weightMap;
     }
 
@@ -117,9 +156,9 @@ public class SelfAdaptiveRule implements LBRule {
             for (Map.Entry<Class<?>, Map<String, InstanceStats>> entry : registry.entrySet()) {
                 Class<?> interClass = entry.getKey();
                 Map<String, InstanceStats> statsMap = entry.getValue();
-                Map<String, Integer> weightMap = calculate(statsMap);
-                updateWeight(interClass, calculate(statsMap));
-                logger.error(interClass.getName() + " update weight " + weightMap);
+                Map<String, Integer> weightMap = calculate(statsMap, getWeight(interClass));
+                updateWeight(interClass, weightMap);
+                logger.info(interClass.getName() + " update weight " + weightMap);
             }
         }
     }

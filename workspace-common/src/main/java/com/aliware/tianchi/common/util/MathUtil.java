@@ -1,4 +1,4 @@
-package com.aliware.tianchi.util;
+package com.aliware.tianchi.common.util;
 
 /**
  * @author yangxf
@@ -6,7 +6,7 @@ package com.aliware.tianchi.util;
 public final class MathUtil {
 
     private MathUtil() {
-        throw new InstantiationError("ArrayUtil can't be instantiated");
+        throw new InstantiationError("MathUtil can't be instantiated");
     }
 
     private static final int MAXIMUM = 1 << 30;
@@ -20,5 +20,5 @@ public final class MathUtil {
         n |= n >>> 16;
         return (n < 0) ? 1 : (n >= MAXIMUM) ? MAXIMUM : n + 1;
     }
-    
+
 }

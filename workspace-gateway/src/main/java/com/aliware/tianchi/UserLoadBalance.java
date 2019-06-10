@@ -10,7 +10,7 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 
 import java.util.List;
 
-import static com.aliware.tianchi.util.ObjectUtil.isEmpty;
+import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
 
 /**
  * @author daofeng.xjf
@@ -34,6 +34,5 @@ public class UserLoadBalance implements LoadBalance {
         }
 
         return rule.select(invokers);
-        // return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
     }
 }

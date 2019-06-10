@@ -1,7 +1,7 @@
 package com.aliware.tianchi.lb.metric.instance;
 
-import com.aliware.tianchi.common.util.OSUtil;
 import com.aliware.tianchi.lb.metric.ServerStats;
+import com.aliware.tianchi.lb.metric.TimeWindowInstanceStats;
 
 import java.util.concurrent.ThreadLocalRandom;
 
