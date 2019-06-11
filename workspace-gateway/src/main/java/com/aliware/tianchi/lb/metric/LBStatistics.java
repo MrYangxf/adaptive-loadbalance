@@ -62,7 +62,7 @@ public class LBStatistics {
             if (stats == null) {
                 ServerStats serverStats = serverRegistry.get(address);
                 if (serverStats == null) {
-                    ServerStats newServerStats = new ServerStats(invoker.getUrl().getAddress());
+                    ServerStats newServerStats = new ServerStats(address);
                     serverStats = serverRegistry.putIfAbsent(address, newServerStats);
                     if (serverStats == null) {
                         serverStats = newServerStats;

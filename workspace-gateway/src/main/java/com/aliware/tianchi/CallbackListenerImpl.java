@@ -8,6 +8,10 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.RpcContext;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 
+import java.net.InetSocketAddress;
+
+import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
+
 /**
  * @author daofeng.xjf
  * <p>
@@ -21,10 +25,17 @@ public class CallbackListenerImpl implements CallbackListener {
 
     @Override
     public void receiveServerMsg(String msg) {
-        String remoteAddressString = RpcContext.getContext().getRemoteAddressString();
-        RuntimeInfo runtimeInfo = OSUtil.newRuntimeInfo(msg);
-        LBStatistics.STATS.updateRuntimeInfo(remoteAddressString, runtimeInfo);
-        logger.info(String.format("update " + remoteAddressString + " runtime info to %s", runtimeInfo));
+        if (nonEmpty(msg)) {
+            RuntimeInfo runtimeInfo = OSUtil.newRuntimeInfo(msg);
+            String remoteAddressString = RpcContext.getContext().getRemoteAddressString();
+            logger.info(String.format("update " + remoteAddressString + " runtime info to %s", runtimeInfo));
+            LBStatistics.STATS.updateRuntimeInfo(remoteAddressString, runtimeInfo);
+            InetSocketAddress remoteAddress = RpcContext.getContext().getRemoteAddress();
+            String hostAddress = remoteAddress.getHostName() + ":" + remoteAddress.getPort();
+            if (!hostAddress.equals(remoteAddressString)) {
+                LBStatistics.STATS.updateRuntimeInfo(hostAddress, runtimeInfo);
+                logger.info(String.format("update " + hostAddress + " runtime info to %s", runtimeInfo));
+            }
+        }
     }
-
 }

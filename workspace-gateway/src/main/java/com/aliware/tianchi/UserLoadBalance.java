@@ -1,9 +1,7 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.lb.LBRule;
-import com.aliware.tianchi.lb.rule.SelfAdaptiveRule;
-import com.aliware.tianchi.lb.rule.WeightedLoadAndErrorRateRule;
-import com.aliware.tianchi.lb.rule.WeightedLoadRule;
+import com.aliware.tianchi.lb.rule.*;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;

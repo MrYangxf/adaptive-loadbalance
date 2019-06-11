@@ -32,7 +32,10 @@ public class WeightedLoadRule extends SelfAdaptiveRule {
             logger.info(stats.toString() + ", runtime info: " + info);
             if (nonNull(info)) {
                 double processCpuLoad = info.getProcessCpuLoad();
-                serverWeight = (int) (serverWeight / (processCpuLoad + DEFAULT_IDLE_LOAD));
+                // serverWeight = (int) (serverWeight / (processCpuLoad + DEFAULT_IDLE_LOAD));
+
+                int availableProcessors = info.getAvailableProcessors();
+                serverWeight = (int) (serverWeight * (1 - processCpuLoad) * availableProcessors);
             }
             weightMap.putIfAbsent(address, serverWeight);
         }
