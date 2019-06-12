@@ -22,7 +22,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
  */
 public class UserLoadBalance implements LoadBalance {
 
-    private LBRule rule = new WeightedLoadRule();
+    private LBRule rule = new WeightedAvgResponseTimesRule();
 
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {

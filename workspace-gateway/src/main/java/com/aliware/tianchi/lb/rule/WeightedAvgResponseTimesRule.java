@@ -43,7 +43,7 @@ public class WeightedAvgResponseTimesRule extends SelfAdaptiveRule {
             Long failRate = failMap.get(key);
             double w2 = (failTotal - failRate) / (failTotal + 1);
 
-            int w = (int) ((w1 * .5d + w2 * .5d) * 100) + 1;
+            int w = (int) ((w1 * .3d + w2 * .7d) * 100) + 1;
             weightMap.put(key, w);
         }
 
