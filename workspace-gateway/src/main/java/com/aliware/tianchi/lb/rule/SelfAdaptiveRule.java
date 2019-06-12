@@ -142,7 +142,7 @@ public class SelfAdaptiveRule implements LBRule {
                 w3 += (loadTotal - load) / loadTotal;
             }
 
-            int w = (int) ((w1 * .3d + w2 * .5d + w3 * .2d) * 100) + 1;
+            int w = (int) ((w1 * .3d + w2 * .4d + w3 * .3d) * 100) + 1;
             weightMap.put(key, w);
         }
 
@@ -162,5 +162,4 @@ public class SelfAdaptiveRule implements LBRule {
             }
         }
     }
-
 }
