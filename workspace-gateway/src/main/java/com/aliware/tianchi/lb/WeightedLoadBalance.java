@@ -1,18 +1,18 @@
-package com.aliware.tianchi.lb.rule;
+package com.aliware.tianchi.lb;
 
 import com.aliware.tianchi.common.util.RuntimeInfo;
-import com.aliware.tianchi.lb.LBRule;
 import com.aliware.tianchi.lb.metric.InstanceStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import com.aliware.tianchi.lb.metric.ServerStats;
+import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.rpc.RpcException;
+import org.apache.dubbo.rpc.cluster.LoadBalance;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
@@ -23,15 +23,15 @@ import static com.aliware.tianchi.common.util.ObjectUtil.*;
 /**
  * @author yangxf
  */
-public class SelfAdaptiveRule implements LBRule {
+public class WeightedLoadBalance implements LoadBalance {
+    private static final Logger logger = LoggerFactory.getLogger(WeightedLoadBalance.class);
 
-    private static final Logger logger = LoggerFactory.getLogger(SelfAdaptiveRule.class);
+    /**
+     * key = serviceId, value = {key = address, value = weight}
+     */
+    private final Map<String, Map<String, Integer>> weightCache = new ConcurrentHashMap<>();
 
-    private LBStatistics statistics = LBStatistics.STATS;
-
-    private final Map<Class<?>, Map<String, Integer>> weightCache = new ConcurrentHashMap<>();
-
-    public SelfAdaptiveRule() {
+    public WeightedLoadBalance() {
         Executors.newSingleThreadScheduledExecutor()
                  .scheduleWithFixedDelay(
                          new WeightedTask(),
@@ -41,9 +41,11 @@ public class SelfAdaptiveRule implements LBRule {
     }
 
     @Override
-    public <T> Invoker<T> select(List<Invoker<T>> candidates) {
-        int size = candidates.size();
-        int[] weights = weighting(candidates);
+    public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
+        String serviceId = invokers.get(0).getInterface().getName() + '#' + invocation.getMethodName();
+
+        int size = invokers.size();
+        int[] weights = weighting(serviceId, invokers);
 
         assert size == weights.length;
 
@@ -57,48 +59,15 @@ public class SelfAdaptiveRule implements LBRule {
             int r = ThreadLocalRandom.current().nextInt(sum);
             for (int i = 0; i < size; i++) {
                 if (r < weights[i]) {
-                    return candidates.get(i);
+                    return invokers.get(i);
                 }
             }
         }
 
-        return candidates.get(ThreadLocalRandom.current().nextInt(size));
+        return invokers.get(ThreadLocalRandom.current().nextInt(size));
     }
 
-    private <T> int[] weighting(List<Invoker<T>> invokers) {
-        int size = invokers.size();
-        assert size > 1;
-
-        int[] weights = new int[size];
-        Class<T> interClass = invokers.get(0).getInterface();
-        Map<String, Integer> weightMap = getWeight(interClass);
-
-        if (isNull(weightMap)) {
-            Arrays.fill(weights, 100);
-            return weights;
-        }
-
-        for (int i = 0; i < size; i++) {
-            Invoker<T> invoker = invokers.get(i);
-            weights[i] = defaultIfNull(weightMap.get(invoker.getUrl().getAddress()), 1);
-        }
-
-        return weights;
-    }
-
-    private Map<String, Integer> getWeight(Class<?> interClass) {
-        return weightCache.get(interClass);
-    }
-
-    private void updateWeight(Class<?> interClass, Map<String, Integer> weightMap) {
-        weightCache.put(interClass, weightMap);
-    }
-
-    private void removeWeight(Class<?> interClass) {
-        weightCache.remove(interClass);
-    }
-
-    Map<String, Integer> calculate(Map<String, InstanceStats> statsMap, Map<String, Integer> prevWeightMap) {
+    Map<String, Integer> calculate(String serviceId, Map<String, InstanceStats> statsMap, Map<String, Integer> oldWeightMap) {
         Map<String, Integer> weightMap = new HashMap<>();
 
         double loadTotal = 0, avgTotal = 0, failTotal = 0;
@@ -110,13 +79,13 @@ public class SelfAdaptiveRule implements LBRule {
             String address = statsEntry.getKey();
             InstanceStats stats = statsEntry.getValue();
 
-            long rejections = stats.getNumberOfRejections();
-            long notSuccesses = stats.getNumberOfFailures() + rejections;
+            long rejections = stats.getNumberOfRejections(serviceId);
+            long notSuccesses = stats.getNumberOfFailures(serviceId) + rejections;
 
             failTotal += notSuccesses;
             failMap.put(address, notSuccesses);
 
-            long avgResponseMs = stats.getAvgResponseMs();
+            long avgResponseMs = stats.getAvgResponseMs(serviceId);
             avgTotal += avgResponseMs;
             avgMap.put(address, avgResponseMs);
 
@@ -149,18 +118,51 @@ public class SelfAdaptiveRule implements LBRule {
         return weightMap;
     }
 
+    private <T> int[] weighting(String serviceId, List<Invoker<T>> invokers) {
+        int size = invokers.size();
+        assert size > 1;
+
+        int[] weights = new int[size];
+        Map<String, Integer> weightMap = weightCache.get(serviceId);
+
+        if (isNull(weightMap)) {
+            Arrays.fill(weights, 100);
+            return weights;
+        }
+
+        for (int i = 0; i < size; i++) {
+            Invoker<T> invoker = invokers.get(i);
+            weights[i] = defaultIfNull(weightMap.get(invoker.getUrl().getAddress()), 1);
+        }
+
+        return weights;
+    }
+
     class WeightedTask implements Runnable {
         @Override
         public void run() {
-            Map<Class<?>, Map<String, InstanceStats>> registry = statistics.getRegistry();
-            for (Map.Entry<Class<?>, Map<String, InstanceStats>> entry : registry.entrySet()) {
-                Class<?> interClass = entry.getKey();
+            Map<String, InstanceStats> registry = LBStatistics.STATS.getRegistry();
+
+            Map<String, Map<String, InstanceStats>> allStatsMap = new HashMap<>();
+            for (Map.Entry<String, InstanceStats> entry : registry.entrySet()) {
+                String address = entry.getKey();
+                InstanceStats stats = entry.getValue();
+
+                Set<String> serviceIds = stats.getServiceIds();
+                for (String serviceId : serviceIds) {
+                    allStatsMap.computeIfAbsent(serviceId, k -> new HashMap<>())
+                               .putIfAbsent(address, stats);
+                }
+            }
+
+            for (Map.Entry<String, Map<String, InstanceStats>> entry : allStatsMap.entrySet()) {
+                String serviceId = entry.getKey();
                 Map<String, InstanceStats> statsMap = entry.getValue();
-                Map<String, Integer> weightMap = calculate(statsMap, getWeight(interClass));
-                updateWeight(interClass, weightMap);
-                logger.info(interClass.getName() + " update weight " + weightMap);
+                Map<String, Integer> oldWeightMap = weightCache.get(serviceId);
+                Map<String, Integer> newWeightMap = calculate(serviceId, statsMap, oldWeightMap);
+                weightCache.put(serviceId, newWeightMap);
+                logger.info(String.format("update weight %s > %s", oldWeightMap, newWeightMap));
             }
         }
     }
-
 }

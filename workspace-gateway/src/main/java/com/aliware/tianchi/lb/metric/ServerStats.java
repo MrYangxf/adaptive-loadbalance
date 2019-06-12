@@ -9,7 +9,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
  */
 public class ServerStats {
 
-    private String address;
+    private final String address;
 
     private volatile RuntimeInfo runtimeInfo;
 

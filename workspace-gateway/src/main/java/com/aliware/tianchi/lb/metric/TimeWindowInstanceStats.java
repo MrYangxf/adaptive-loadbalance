@@ -1,10 +1,12 @@
 package com.aliware.tianchi.lb.metric;
 
-import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SegmentCounter;
 import com.aliware.tianchi.common.util.SegmentCounterFactory;
 import com.aliware.tianchi.common.util.SkipListCounter;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
@@ -18,7 +20,9 @@ import static com.aliware.tianchi.common.util.ObjectUtil.defaultIfNull;
 public class TimeWindowInstanceStats implements InstanceStats {
     private static final long serialVersionUID = -1040897703729118186L;
 
-    private static final long DEFAULT_INTERVAL_SECONDS = 10;
+    private static final long DEFAULT_WINDOW_SIZE = 10;
+    private static final long DEFAULT_INTERVAL_NANOS = TimeUnit.SECONDS.toNanos(1);
+    private static final TimeUnit DEFAULT_TIME_UNIT = TimeUnit.SECONDS;
     private static final SegmentCounterFactory DEFAULT_COUNTER_FACTORY = SkipListCounter::new;
 
     /**
@@ -27,172 +31,51 @@ public class TimeWindowInstanceStats implements InstanceStats {
     private final String address;
 
     /**
-     * 窗口的时间间隔
+     * 实例系统、jvm信息
      */
-    private final long intervalSeconds;
+    private final ServerStats serverStats;
 
-    /**
-     * 该实例服务器信息
+    // windowNanos = windowSize * timeIntervalNanos
+    private final long windowSize;
+    private final long timeIntervalNanos;
+    private final long windowNanos;
+
+    private final SegmentCounterFactory counterFactory;
+
+    /*
+     * 4组分段计数器
+     * key = serviceId, value = counter
+     * totalResponseMs = successesMs + failuresMs
+     * requests = successes + failures + rejections
      */
-    private volatile ServerStats serverStats;
+    private final Map<String, SegmentCounter> totalResponseMsCounterMap = new ConcurrentHashMap<>();
+    private final Map<String, SegmentCounter> requestsCounterMap = new ConcurrentHashMap<>();
+    private final Map<String, SegmentCounter> failuresCounterMap = new ConcurrentHashMap<>();
+    private final Map<String, SegmentCounter> rejectionsCounterMap = new ConcurrentHashMap<>();
 
-    // 计数器
-    private final SegmentCounter totalResponseMsCounter; // successes + failures MS
-    private final SegmentCounter numberOfRequestsCounter; // successes + failures + rejections
-    private final SegmentCounter numberOfFailuresCounter;
-    private final SegmentCounter numberOfRejectionsCounter;
 
-    public TimeWindowInstanceStats(ServerStats serverStats, String address) {
-        this(DEFAULT_INTERVAL_SECONDS, serverStats, address, null);
-    }
-
-    public TimeWindowInstanceStats(long intervalSeconds, ServerStats serverStats, String address) {
-        this(intervalSeconds, serverStats, address, null);
-    }
-
-    public TimeWindowInstanceStats(long intervalSeconds, ServerStats serverStats, String address, SegmentCounterFactory counterFactory) {
+    public TimeWindowInstanceStats(String address,
+                                   ServerStats serverStats,
+                                   long windowSize,
+                                   long timeInterval,
+                                   TimeUnit timeUnit,
+                                   SegmentCounterFactory counterFactory) {
         checkNotNull(address, "address");
-        if (intervalSeconds <= 0) {
-            throw new IllegalArgumentException("intervalSeconds must be > 0");
-        }
-        this.intervalSeconds = intervalSeconds;
-        this.serverStats = serverStats;
         this.address = address;
-        counterFactory = defaultIfNull(counterFactory, DEFAULT_COUNTER_FACTORY);
-        totalResponseMsCounter = counterFactory.newCounter();
-        numberOfRequestsCounter = counterFactory.newCounter();
-        numberOfFailuresCounter = counterFactory.newCounter();
-        numberOfRejectionsCounter = counterFactory.newCounter();
-    }
-
-    @Override
-    public void success(long responseMs) {
-        long s = getCurrentSeconds();
-        totalResponseMsCounter.add(s, responseMs);
-        numberOfRequestsCounter.increment(s);
-    }
-
-    @Override
-    public void failure(long responseMs) {
-        long s = getCurrentSeconds();
-        totalResponseMsCounter.add(s, responseMs);
-        numberOfRequestsCounter.increment(s);
-        numberOfFailuresCounter.increment(s);
-    }
-
-    @Override
-    public void rejection() {
-        long s = getCurrentSeconds();
-        numberOfRequestsCounter.increment(s);
-        numberOfRejectionsCounter.increment(s);
-    }
-
-    @Override
-    public void clean() {
-        // 留一个间隔作为缓冲
-        long toKey = getCurrentSeconds() - (intervalSeconds << 1);
-        totalResponseMsCounter.clean(toKey);
-        numberOfRequestsCounter.clean(toKey);
-        numberOfFailuresCounter.clean(toKey);
-        numberOfRejectionsCounter.clean(toKey);
-    }
-
-    @Override
-    public long evalMaxRequestsPerSeconds() {
-        ServerStats serverStats = this.serverStats;
-        if (serverStats == null) {
-            return Long.MAX_VALUE;
-        }
-        RuntimeInfo runtimeInfo = serverStats.getRuntimeInfo();
-        if (runtimeInfo == null) {
-            return Long.MAX_VALUE;
-        }
-
-        long timestamp = runtimeInfo.getTimestamp();
-        long high = TimeUnit.MILLISECONDS.toSeconds(timestamp),
-                low = high - intervalSeconds;
-        if (high < getCurrentSeconds()) {
-            high++;
-        }
-
-        long total = numberOfRequestsCounter.sum(low, high);
-        long notSuccesses = numberOfFailuresCounter.sum(low, high) +
-                            numberOfRejectionsCounter.sum(low, high);
-        long successes = total - notSuccesses;
-        long successTpt = successes / intervalSeconds;
-
-        if (successTpt == 0) {
-            return Long.MAX_VALUE;
-        }
-
-        double rate = notSuccesses / (double) total;
-        if (rate > .01) {
-            return successTpt;
-        }
-
-        double processCpuLoad = runtimeInfo.getProcessCpuLoad();
-
-        return (long) (successTpt * .8 / (processCpuLoad + .0001));
-    }
-
-    @Override
-    public long getAvgResponseMs() {
-        long high = getCurrentSeconds(),
-                low = high - intervalSeconds;
-        // avg = totalResponseMs / (requests - rejections + 1)
-        return totalResponseMsCounter.sum(low, true, high, false) /
-               (numberOfRequestsCounter.sum(low, true, high, false) -
-                numberOfRejectionsCounter.sum(low, true, high, false) + 1);
-    }
-
-    @Override
-    public long getThroughput() {
-        long high = getCurrentSeconds(),
-                low = high - intervalSeconds;
-        return numberOfRequestsCounter.sum(low, true, high, false) / intervalSeconds;
-    }
-
-    @Override
-    public long getTotalResponseMs() {
-        long high = getCurrentSeconds(),
-                low = high - intervalSeconds;
-        return totalResponseMsCounter.sum(low, true, high, false);
-    }
-
-    @Override
-    public long getNumberOfRequests() {
-        long high = getCurrentSeconds(),
-                low = high - intervalSeconds;
-        return numberOfRequestsCounter.sum(low, true, high, false);
-    }
-
-    @Override
-    public long getNumberOfRequests(long second) {
-        return numberOfRequestsCounter.get(getCurrentSeconds());
-    }
-
-    @Override
-    public long getNumberOfFailures() {
-        long high = getCurrentSeconds(),
-                low = high - intervalSeconds;
-        return numberOfFailuresCounter.sum(low, true, high, false);
-    }
-
-    @Override
-    public long getNumberOfRejections() {
-        long high = getCurrentSeconds(),
-                low = high - intervalSeconds;
-        return numberOfRejectionsCounter.sum(low, true, high, false);
-    }
-
-    @Override
-    public ServerStats getServerStats() {
-        return serverStats;
-    }
-
-    @Override
-    public void setServerStats(ServerStats serverStats) {
         this.serverStats = serverStats;
+        this.windowSize = windowSize > 0 ? windowSize : DEFAULT_WINDOW_SIZE;
+        long nanos = defaultIfNull(timeUnit, DEFAULT_TIME_UNIT).toNanos(timeInterval);
+        this.timeIntervalNanos = nanos > 0 ? nanos : DEFAULT_INTERVAL_NANOS;
+        windowNanos = this.windowSize * timeIntervalNanos;
+        this.counterFactory = defaultIfNull(counterFactory, DEFAULT_COUNTER_FACTORY);
+    }
+
+    public long getWindowSize() {
+        return windowSize;
+    }
+
+    public long getTimeIntervalNanos() {
+        return timeIntervalNanos;
     }
 
     @Override
@@ -201,18 +84,160 @@ public class TimeWindowInstanceStats implements InstanceStats {
     }
 
     @Override
-    public String toString() {
-        return getAddress() +
-               " - req=" + getNumberOfRequests() +
-               ", fai=" + getNumberOfFailures() +
-               ", rej=" + getNumberOfRejections() +
-               ", avg=" + getAvgResponseMs() +
-               ", tpt=" + getThroughput() +
-               ", max=" + evalMaxRequestsPerSeconds();
+    public ServerStats getServerStats() {
+        return serverStats;
     }
 
-    private static long getCurrentSeconds() {
-        long ms = System.currentTimeMillis();
-        return TimeUnit.MILLISECONDS.toSeconds(ms);
+    @Override
+    public State evalState() {
+        return null;
+    }
+
+    @Override
+    public Set<String> getServiceIds() {
+        return requestsCounterMap.keySet();
+    }
+
+    @Override
+    public void success(String serviceId, long responseMs) {
+        long offset = offset();
+        getOrCreate(totalResponseMsCounterMap, serviceId).add(offset, responseMs);
+        getOrCreate(requestsCounterMap, serviceId).increment(offset);
+    }
+
+    @Override
+    public void failure(String serviceId, long responseMs) {
+        long offset = offset();
+        getOrCreate(totalResponseMsCounterMap, serviceId).add(offset, responseMs);
+        getOrCreate(requestsCounterMap, serviceId).increment(offset);
+        getOrCreate(failuresCounterMap, serviceId).increment(offset);
+    }
+
+    @Override
+    public void rejection(String serviceId) {
+        long offset = offset();
+        getOrCreate(requestsCounterMap, serviceId).increment(offset);
+        getOrCreate(rejectionsCounterMap, serviceId).increment(offset);
+    }
+
+    @Override
+    public void clean() {
+        // 留一个间隔作为缓冲
+        long toKey = offset() - (windowNanos << 1);
+        cleanMap(totalResponseMsCounterMap, toKey);
+        cleanMap(requestsCounterMap, toKey);
+        cleanMap(failuresCounterMap, toKey);
+        cleanMap(rejectionsCounterMap, toKey);
+    }
+
+    @Override
+    public long getAvgResponseMs() {
+        long high = offset(),
+                low = high - windowNanos;
+        // avg = totalResponseMs / (requests - rejections + 1)
+        return sumMap(totalResponseMsCounterMap, low, high) /
+               (sumMap(requestsCounterMap, low, high) - sumMap(rejectionsCounterMap, low, high) + 1);
+    }
+
+    @Override
+    public long getAvgResponseMs(String serviceId) {
+        long high = offset(),
+                low = high - windowNanos;
+        // avg = totalResponseMs / (requests - rejections + 1)
+        return getOrCreate(totalResponseMsCounterMap, serviceId).sum(low, high) /
+               (getOrCreate(requestsCounterMap, serviceId).sum(low, high) -
+                getOrCreate(rejectionsCounterMap, serviceId).sum(low, high) + 1);
+    }
+
+    @Override
+    public long getThroughput() {
+        long high = offset(),
+                low = high - windowNanos;
+        return sumMap(requestsCounterMap, low, high) /
+               TimeUnit.NANOSECONDS.toSeconds(windowNanos);
+    }
+
+    @Override
+    public long getThroughput(String serviceId) {
+        long high = offset(),
+                low = high - windowNanos;
+        return getOrCreate(requestsCounterMap, serviceId).sum(low, high) /
+               TimeUnit.NANOSECONDS.toSeconds(windowNanos);
+    }
+
+    @Override
+    public long getTotalResponseMs() {
+        long high = offset(),
+                low = high - windowNanos;
+        return sumMap(totalResponseMsCounterMap, low, high);
+    }
+
+    @Override
+    public long getTotalResponseMs(String serviceId) {
+        long high = offset(),
+                low = high - windowNanos;
+        return getOrCreate(totalResponseMsCounterMap, serviceId).sum(low, high);
+    }
+
+    @Override
+    public long getNumberOfRequests() {
+        long high = offset(),
+                low = high - windowNanos;
+        return sumMap(requestsCounterMap, low, high);
+    }
+
+    @Override
+    public long getNumberOfRequests(String serviceId) {
+        long high = offset(),
+                low = high - windowNanos;
+        return getOrCreate(requestsCounterMap, serviceId).sum(low, high);
+    }
+
+    @Override
+    public long getNumberOfFailures() {
+        long high = offset(),
+                low = high - windowNanos;
+        return sumMap(failuresCounterMap, low, high);
+    }
+
+    @Override
+    public long getNumberOfFailures(String serviceId) {
+        long high = offset(),
+                low = high - windowNanos;
+        return getOrCreate(failuresCounterMap, serviceId).sum(low, high);
+    }
+
+    @Override
+    public long getNumberOfRejections() {
+        long high = offset(),
+                low = high - windowNanos;
+        return sumMap(rejectionsCounterMap, low, high);
+    }
+
+    @Override
+    public long getNumberOfRejections(String serviceId) {
+        long high = offset(),
+                low = high - windowNanos;
+        return getOrCreate(rejectionsCounterMap, serviceId).sum(low, high);
+    }
+
+    private SegmentCounter getOrCreate(Map<String, SegmentCounter> counterMap, String key) {
+        return counterMap.computeIfAbsent(key, k -> counterFactory.newCounter());
+    }
+
+    private long offset() {
+        return System.nanoTime() / timeIntervalNanos;
+    }
+
+    private long sumMap(Map<String, SegmentCounter> counterMap, long fromKey, long toKey) {
+        return counterMap.values().stream()
+                         .mapToLong(c -> c.sum(fromKey, toKey))
+                         .sum();
+    }
+
+    private void cleanMap(Map<String, SegmentCounter> counterMap, long toKey) {
+        for (SegmentCounter segmentCounter : counterMap.values()) {
+            segmentCounter.clean(toKey);
+        }
     }
 }

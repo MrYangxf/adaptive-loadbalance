@@ -1,10 +1,12 @@
 package com.aliware.tianchi.lb.metric;
 
 import com.aliware.tianchi.common.util.RuntimeInfo;
-import org.apache.dubbo.rpc.Invoker;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
@@ -15,84 +17,60 @@ import static com.aliware.tianchi.common.util.ObjectUtil.defaultIfNull;
  */
 public class LBStatistics {
 
+    private static final Logger logger = LoggerFactory.getLogger(LBStatistics.class);
+
+    private static final Function<String, InstanceStats> DEFAULT_STATS_GENERATOR =
+            address -> new TimeWindowInstanceStats(address, new ServerStats(address),
+                                                   5, 1, TimeUnit.SECONDS,
+                                                   null);
+    
     public static final LBStatistics STATS = new LBStatistics(null);
+
 
     /**
      * InstanceStats 创建函数
      */
-    private Function<Invoker<?>, InstanceStats> statsGenerator;
+    private Function<String, InstanceStats> statsGenerator;
 
     /**
-     * key = interface, sub_key = address, value = InstanceStats
+     * key = host:port, value = InstanceStats
      */
-    private Map<Class<?>, Map<String, InstanceStats>> registry = new ConcurrentHashMap<>();
+    private final Map<String, InstanceStats> registry = new ConcurrentHashMap<>();
 
-    /**
-     * key = address, value = ServerStats
-     */
-    private Map<String, ServerStats> serverRegistry = new ConcurrentHashMap<>();
-
-    public LBStatistics(Function<Invoker<?>, InstanceStats> statsGenerator) {
-        this.statsGenerator = defaultIfNull(statsGenerator,
-                                            invoker -> new TimeWindowInstanceStats(null,
-                                                                                   invoker.getUrl().getAddress()));
+    public LBStatistics(Function<String, InstanceStats> statsGenerator) {
+        this.statsGenerator = defaultIfNull(statsGenerator, DEFAULT_STATS_GENERATOR);
     }
 
-    public Map<String, InstanceStats> getInstanceStatsMap(Invoker<?> invoker) {
-        checkNotNull(invoker, "invoker");
-        Class<?> interClass = invoker.getInterface();
-        Map<String, InstanceStats> instanceStatsMap = registry.get(interClass);
-        if (instanceStatsMap == null) {
-            Map<String, InstanceStats> newMap = new ConcurrentHashMap<>();
-            instanceStatsMap = registry.putIfAbsent(interClass, newMap);
-            if (instanceStatsMap == null) {
-                instanceStatsMap = newMap;
-            }
-        }
-        return instanceStatsMap;
-    }
-
-    public InstanceStats getInstanceStats(Invoker<?> invoker) {
-        Map<String, InstanceStats> instanceStatsMap = getInstanceStatsMap(invoker);
-        String address = invoker.getUrl().getAddress();
-        InstanceStats stats = instanceStatsMap.get(address);
+    public InstanceStats getInstanceStats(String address) {
+        checkNotNull(address, "address");
+        InstanceStats stats = registry.get(address);
         if (stats == null) {
-            InstanceStats newStats = statsGenerator.apply(invoker);
-            stats = instanceStatsMap.putIfAbsent(address, newStats);
+            InstanceStats newStats = statsGenerator.apply(address);
+            stats = registry.putIfAbsent(address, newStats);
             if (stats == null) {
-                ServerStats serverStats = serverRegistry.get(address);
-                if (serverStats == null) {
-                    ServerStats newServerStats = new ServerStats(address);
-                    serverStats = serverRegistry.putIfAbsent(address, newServerStats);
-                    if (serverStats == null) {
-                        serverStats = newServerStats;
-                    }
-                }
-                newStats.setServerStats(serverStats);
                 stats = newStats;
             }
         }
         return stats;
     }
 
-    public Map<Class<?>, Map<String, InstanceStats>> getRegistry() {
+    public Map<String, InstanceStats> getRegistry() {
         return registry;
     }
 
     public void updateRuntimeInfo(String address, RuntimeInfo runtimeInfo) {
         checkNotNull(address, "address");
-        ServerStats serverStats = serverRegistry.get(address);
-        if (serverStats != null) {
-            serverStats.setRuntimeInfo(runtimeInfo);
-        }
-    }
-
-    public void evict(Invoker<?> invoker) {
-        checkNotNull(invoker, "invoker");
-        Class<?> interClass = invoker.getInterface();
-        Map<String, InstanceStats> statsMap = registry.get(interClass);
-        if (statsMap != null) {
-            statsMap.remove(invoker.getUrl().getAddress());
+        InstanceStats stats = registry.get(address);
+        if (stats != null) {
+            ServerStats serverStats = stats.getServerStats();
+            if (serverStats != null) {
+                serverStats.setRuntimeInfo(runtimeInfo);
+                logger.info("update " + address + " to " + runtimeInfo);
+            } else {
+                logger.info(address + " runtime info is null");
+            }
+        } else {
+            logger.info(address + " instance stats is null");
         }
     }
 

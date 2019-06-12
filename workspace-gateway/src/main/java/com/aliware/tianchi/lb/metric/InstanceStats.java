@@ -2,6 +2,7 @@ package com.aliware.tianchi.lb.metric;
 
 
 import java.io.Serializable;
+import java.util.Set;
 
 /**
  * 实例统计信息
@@ -10,52 +11,75 @@ import java.io.Serializable;
  */
 public interface InstanceStats extends Serializable {
 
+    enum State {
+        OVERLOAD,
+        UNDERLOAD
+    }
+
+    String getAddress();
+
+    /**
+     * 获取系统、jvm统计指标
+     */
+    ServerStats getServerStats();
+
+    /**
+     * 评估实例状态
+     */
+    State evalState();
+
+    Set<String> getServiceIds();
+
     /**
      * 请求成功
      *
+     * @param serviceId  服务id
      * @param responseMs 响应时间
      */
-    void success(long responseMs);
+    void success(String serviceId, long responseMs);
 
     /**
      * 请求失败
      *
+     * @param serviceId  服务id
      * @param responseMs 响应时间
      */
-    void failure(long responseMs);
+    void failure(String serviceId, long responseMs);
 
     /**
      * 请求被拒绝
      */
-    void rejection();
+    void rejection(String serviceId);
 
     /**
      * 清理统计信息
      */
     void clean();
 
-    /**
-     * 评估该实例最大请求数，如果未获取到服务器信息，返回 {@link Long#MAX_VALUE}
-     */
-    long evalMaxRequestsPerSeconds();
+    // 指标查询
 
     long getAvgResponseMs();
 
+    long getAvgResponseMs(String serviceId);
+
     long getThroughput();
+
+    long getThroughput(String serviceId);
 
     long getTotalResponseMs();
 
+    long getTotalResponseMs(String serviceId);
+
     long getNumberOfRequests();
-    
-    long getNumberOfRequests(long second);
+
+    long getNumberOfRequests(String serviceId);
 
     long getNumberOfFailures();
 
+    long getNumberOfFailures(String serviceId);
+
     long getNumberOfRejections();
 
-    ServerStats getServerStats();
+    long getNumberOfRejections(String serviceId);
 
-    void setServerStats(ServerStats serverStats);
-
-    String getAddress();
 }

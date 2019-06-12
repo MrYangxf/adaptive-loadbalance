@@ -31,16 +31,23 @@ public class TestClientFilter implements Filter {
         }
     }
 
+    @Override
+    public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
+        return result;
+    }
+
     private Result invokeAsync(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        InstanceStats stats = lbStats.getInstanceStats(invoker);
+        String address = invoker.getUrl().getAddress();
+        String serviceId = invoker.getInterface().getName() + '#' + invocation.getMethodName();
+        InstanceStats stats = lbStats.getInstanceStats(address);
         long startMs = System.currentTimeMillis();
         Result result = invoker.invoke(invocation);
         CompletableFuture<Object> f = RpcContext.getContext().getCompletableFuture();
         if (f != null) {
-            f.whenComplete((x, y) -> stats.success(System.currentTimeMillis() - startMs))
+            f.whenComplete((x, y) -> stats.success(serviceId, System.currentTimeMillis() - startMs))
              .exceptionally(t -> {
                  // todo
-                 stats.failure(System.currentTimeMillis() - startMs);
+                 stats.failure(serviceId, System.currentTimeMillis() - startMs);
                  return null;
              });
         }
@@ -48,14 +55,16 @@ public class TestClientFilter implements Filter {
     }
 
     private Result invokeSync(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        InstanceStats stats = lbStats.getInstanceStats(invoker);
+        String address = invoker.getUrl().getAddress();
+        String serviceId = invoker.getInterface().getName() + '#' + invocation.getMethodName();
+        InstanceStats stats = lbStats.getInstanceStats(address);
         long startMs = System.currentTimeMillis();
         try {
             Result result = invoker.invoke(invocation);
-            stats.success(System.currentTimeMillis() - startMs);
+            stats.success(serviceId, System.currentTimeMillis() - startMs);
             return result;
         } catch (Exception e) {
-            stats.failure(System.currentTimeMillis() - startMs);
+            stats.failure(serviceId, System.currentTimeMillis() - startMs);
             throw e;
         }
     }
