@@ -78,7 +78,8 @@ public class SelfAdaptiveRule implements LBRule {
             }
         }
 
-        return candidates.get(ThreadLocalRandom.current().nextInt(size));
+        return null;
+        // return candidates.get(ThreadLocalRandom.current().nextInt(size));
     }
 
     private <T> int[] weighting(List<Invoker<T>> invokers) {
