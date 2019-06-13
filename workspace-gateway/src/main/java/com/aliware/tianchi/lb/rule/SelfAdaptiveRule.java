@@ -29,6 +29,8 @@ public class SelfAdaptiveRule implements LBRule {
 
     private LBStatistics statistics = LBStatistics.STATS;
 
+    private final Map<Class<?>, Map<String, Long>> maxTptMap = new ConcurrentHashMap<>();
+
     private final Map<Class<?>, Map<String, Integer>> weightCache = new ConcurrentHashMap<>();
 
     public SelfAdaptiveRule() {
@@ -50,20 +52,26 @@ public class SelfAdaptiveRule implements LBRule {
         int sum = 0;
         for (int i = 0; i < size; i++) {
             sum += weights[i];
-            weights[i] = sum;
         }
+
+        Map<String, Long> tptMap = maxTptMap.get(candidates.get(0).getInterface());
 
         outer:
         while (sum > 0) {
             int r = ThreadLocalRandom.current().nextInt(sum);
             for (int i = 0; i < size; i++) {
-                if (r < weights[i]) {
+                r -= weights[i];
+                if (r < 0) {
                     Invoker<T> select = candidates.get(i);
-                    InstanceStats stats = statistics.getInstanceStats(select);
-                    if (stats.getNumberOfRequests(0) > stats.evalMaxRequestsPerSeconds()) {
-                        sum -= weights[i];
-                        weights[i] = 0;
-                        continue outer;
+                    if (tptMap != null) {
+                        InstanceStats stats = LBStatistics.STATS.getInstanceStats(select);
+                        Long maxTpt = tptMap.get(select.getUrl().getAddress());
+                        if (maxTpt != null &&
+                            stats.getNumberOfRequests(0) > maxTpt) {
+                            sum -= weights[i];
+                            weights[i] = 0;
+                            continue outer;
+                        }
                     }
                     return select;
                 }
@@ -150,7 +158,7 @@ public class SelfAdaptiveRule implements LBRule {
                 w3 += (loadTotal - load) / loadTotal;
             }
 
-            int w = (int) ((w1 * .3d + w2 * .4d + w3 * .3d) * 100) + 1;
+            int w = (int) ((w1 * .3d + w2 * .5d + w3 * .2d) * 100) + 1;
             weightMap.put(key, w);
         }
 
@@ -166,6 +174,14 @@ public class SelfAdaptiveRule implements LBRule {
                 Map<String, InstanceStats> statsMap = entry.getValue();
                 Map<String, Integer> weightMap = calculate(statsMap, getWeight(interClass));
                 updateWeight(interClass, weightMap);
+
+                Map<String, Long> map = new HashMap<>();
+                for (Map.Entry<String, InstanceStats> statsEntry : statsMap.entrySet()) {
+                    InstanceStats value = statsEntry.getValue();
+                    map.put(statsEntry.getKey(), value.evalMaxRequestsPerSeconds());
+                }
+                maxTptMap.put(interClass, map);
+
                 logger.info(interClass.getName() + " update weight " + weightMap);
             }
         }

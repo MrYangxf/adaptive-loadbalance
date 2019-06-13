@@ -37,14 +37,14 @@ public class MaxRequestsRandomRule implements LBRule {
                                  for (Map.Entry<String, InstanceStats> statsEntry : statsMap.entrySet()) {
                                      InstanceStats value = statsEntry.getValue();
                                      map.put(statsEntry.getKey(), value.evalMaxRequestsPerSeconds());
-                                     logger.error(value.toString());
+                                     logger.info(value.toString());
                                  }
                                  maxTptMap.put(key, map);
-                                 logger.error(map.toString());
+                                 logger.info(map.toString());
                              }
                          },
                          1000,
-                         1000,
+                         500,
                          TimeUnit.MILLISECONDS);
     }
 

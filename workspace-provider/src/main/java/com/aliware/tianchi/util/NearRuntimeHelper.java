@@ -32,7 +32,7 @@ public class NearRuntimeHelper {
                              }
                          },
                          500,
-                         500,
+                         300,
                          TimeUnit.MILLISECONDS);
     }
 

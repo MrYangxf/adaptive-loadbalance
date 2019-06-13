@@ -31,7 +31,7 @@ public class CallbackServiceImpl implements CallbackService {
                              }
                          }
                      }
-                 }, 1000, 1000, TimeUnit.MILLISECONDS);
+                 }, 1000, 600, TimeUnit.MILLISECONDS);
     }
 
     /**

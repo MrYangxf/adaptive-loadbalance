@@ -75,7 +75,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
     @Override
     public void failure(long responseMs) {
         long s = getCurrentSeconds();
-        totalResponseMsCounter.add(s, responseMs);
+        // totalResponseMsCounter.add(s, responseMs);
         numberOfRequestsCounter.increment(s);
         numberOfFailuresCounter.increment(s);
     }
@@ -109,11 +109,11 @@ public class TimeWindowInstanceStats implements InstanceStats {
         }
 
         long timestamp = runtimeInfo.getTimestamp();
-        long high = TimeUnit.MILLISECONDS.toSeconds(timestamp),
-                low = high - intervalSeconds;
+        long high = TimeUnit.MILLISECONDS.toSeconds(timestamp);
         if (high < getCurrentSeconds()) {
             high++;
         }
+        long low = high - intervalSeconds;
 
         long total = numberOfRequestsCounter.sum(low, high);
         long notSuccesses = numberOfFailuresCounter.sum(low, high) +
@@ -126,8 +126,14 @@ public class TimeWindowInstanceStats implements InstanceStats {
         }
 
         double rate = notSuccesses / (double) total;
-        if (rate > .01) {
+        if (rate > .1) {
             return successTpt;
+        }
+        if (rate > .07) {
+            return (long) (successTpt * 1.1);
+        }
+        if (rate > .05) {
+            return (long) (successTpt * 1.2);
         }
 
         double processCpuLoad = runtimeInfo.getProcessCpuLoad();
@@ -142,6 +148,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
         // avg = totalResponseMs / (requests - rejections + 1)
         return totalResponseMsCounter.sum(low, true, high, false) /
                (numberOfRequestsCounter.sum(low, true, high, false) -
+                numberOfFailuresCounter.sum(low, true, high, false) -
                 numberOfRejectionsCounter.sum(low, true, high, false) + 1);
     }
 
@@ -208,7 +215,8 @@ public class TimeWindowInstanceStats implements InstanceStats {
                ", rej=" + getNumberOfRejections() +
                ", avg=" + getAvgResponseMs() +
                ", tpt=" + getThroughput() +
-               ", max=" + evalMaxRequestsPerSeconds();
+               ", max=" + evalMaxRequestsPerSeconds() +
+               ", runtime=" + getServerStats().getRuntimeInfo();
     }
 
     private static long getCurrentSeconds() {
