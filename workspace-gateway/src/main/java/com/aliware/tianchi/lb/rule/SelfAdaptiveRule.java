@@ -53,6 +53,7 @@ public class SelfAdaptiveRule implements LBRule {
             weights[i] = sum;
         }
 
+        outer:
         while (sum > 0) {
             int r = ThreadLocalRandom.current().nextInt(sum);
             for (int i = 0; i < size; i++) {
@@ -62,7 +63,7 @@ public class SelfAdaptiveRule implements LBRule {
                     if (stats.getNumberOfRequests(0) < stats.evalMaxRequestsPerSeconds()) {
                         sum -= weights[i];
                         weights[i] = 0;
-                        continue;
+                        continue outer;
                     }
                     return select;
                 }
