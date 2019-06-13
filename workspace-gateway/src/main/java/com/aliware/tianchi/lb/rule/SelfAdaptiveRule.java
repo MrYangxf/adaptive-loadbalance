@@ -60,7 +60,7 @@ public class SelfAdaptiveRule implements LBRule {
                 if (r < weights[i]) {
                     Invoker<T> select = candidates.get(i);
                     InstanceStats stats = statistics.getInstanceStats(select);
-                    if (stats.getNumberOfRequests(0) < stats.evalMaxRequestsPerSeconds()) {
+                    if (stats.getNumberOfRequests(0) > stats.evalMaxRequestsPerSeconds()) {
                         sum -= weights[i];
                         weights[i] = 0;
                         continue outer;
