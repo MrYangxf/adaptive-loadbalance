@@ -10,7 +10,6 @@ import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
  */
 public final class RuntimeInfo {
     private static final int FIELDS = 6;
-    private static final String SPLIT_REG = "[,_:; ]";
     private static final String SEPARATOR = "_";
 
     private final long timestamp;
@@ -45,7 +44,7 @@ public final class RuntimeInfo {
 
     public static RuntimeInfo fromString(String formatText) {
         checkNotNull(formatText, "formatText");
-        return newRuntimeInfo(formatText.split(SPLIT_REG, -1));
+        return newRuntimeInfo(formatText.split(SEPARATOR, -1));
     }
 
     /**
@@ -148,18 +147,4 @@ public final class RuntimeInfo {
         numbers[5] = info.daemonThreadCount;
         return numbers;
     }
-
-    public static void main(String[] args) {
-        RuntimeInfo r1 = new RuntimeInfo();
-        RuntimeInfo r2 = new RuntimeInfo();
-        RuntimeInfo r3 = new RuntimeInfo();
-        RuntimeInfo r = RuntimeInfo.merge(r1, r2, r3);
-        RuntimeInfo rc = RuntimeInfo.fromString(r.toString());
-        System.out.println(r1);
-        System.out.println(r2);
-        System.out.println(r3);
-        System.out.println(r1);
-        System.out.println(rc);
-    }
-
 }

@@ -17,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.LongAdder;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.*;
 
@@ -32,6 +33,8 @@ public class SelfAdaptiveRule implements LBRule {
     private final Map<Class<?>, Map<String, Long>> maxTptMap = new ConcurrentHashMap<>();
 
     private final Map<Class<?>, Map<String, Integer>> weightCache = new ConcurrentHashMap<>();
+
+    private LongAdder rejAdder = new LongAdder();
 
     public SelfAdaptiveRule() {
         Executors.newSingleThreadScheduledExecutor()
@@ -55,8 +58,7 @@ public class SelfAdaptiveRule implements LBRule {
         }
 
         Map<String, Long> tptMap = maxTptMap.get(candidates.get(0).getInterface());
-
-        outer:
+        long numberOfRequests = 0;
         while (sum > 0) {
             int r = ThreadLocalRandom.current().nextInt(sum);
             for (int i = 0; i < size; i++) {
@@ -66,18 +68,20 @@ public class SelfAdaptiveRule implements LBRule {
                     if (tptMap != null) {
                         InstanceStats stats = LBStatistics.STATS.getInstanceStats(select);
                         Long maxTpt = tptMap.get(select.getUrl().getAddress());
-                        if (maxTpt != null &&
-                            stats.getNumberOfRequests(0) > maxTpt) {
+                        numberOfRequests = stats.getNumberOfRequests(0);
+                        if (maxTpt != null && numberOfRequests > maxTpt) {
                             sum -= weights[i];
                             weights[i] = 0;
-                            continue outer;
+                            break; 
                         }
                     }
                     return select;
                 }
             }
         }
-
+        
+        rejAdder.increment();
+        logger.info("rejects=" + rejAdder.sum() + ", req=" + numberOfRequests + ", max=" + tptMap);
         return null;
         // return candidates.get(ThreadLocalRandom.current().nextInt(size));
     }
