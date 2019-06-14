@@ -15,7 +15,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class TestRequestLimiter implements RequestLimiter {
 
-    private static final double THRESHOLD = .90d;
+    private static final double THRESHOLD = .95d;
     private final NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
 
     /**

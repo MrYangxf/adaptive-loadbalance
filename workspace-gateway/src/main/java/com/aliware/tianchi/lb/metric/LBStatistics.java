@@ -34,7 +34,7 @@ public class LBStatistics {
 
     public LBStatistics(Function<Invoker<?>, InstanceStats> statsGenerator) {
         this.statsGenerator = defaultIfNull(statsGenerator,
-                                            invoker -> new TimeWindowInstanceStats(3, null,
+                                            invoker -> new TimeWindowInstanceStats(2, null,
                                                                                    invoker.getUrl().getAddress()));
     }
 
