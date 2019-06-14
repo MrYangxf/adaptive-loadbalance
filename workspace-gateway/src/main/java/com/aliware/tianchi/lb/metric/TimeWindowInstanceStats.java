@@ -138,7 +138,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
 
         double processCpuLoad = runtimeInfo.getProcessCpuLoad();
 
-        return (long) (successTpt * .8 / (processCpuLoad + .0001));
+        return Long.MAX_VALUE;
     }
 
     @Override
