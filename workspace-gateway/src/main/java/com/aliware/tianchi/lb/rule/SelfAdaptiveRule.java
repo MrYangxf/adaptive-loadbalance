@@ -57,43 +57,43 @@ public class SelfAdaptiveRule implements LBRule {
             sum += weights[i];
         }
 
-        Map<String, Long> tptMap = maxTptMap.get(candidates.get(0).getInterface());
-        long numberOfRequests = 0;
-        while (sum > 0) {
-            int r = ThreadLocalRandom.current().nextInt(sum);
-            for (int i = 0; i < size; i++) {
-                r -= weights[i];
-                if (r < 0) {
-                    Invoker<T> select = candidates.get(i);
-                    if (tptMap != null) {
-                        InstanceStats stats = LBStatistics.STATS.getInstanceStats(select);
-                        Long maxTpt = tptMap.get(select.getUrl().getAddress());
-                        numberOfRequests = stats.getNumberOfRequests(0);
-                        if (maxTpt != null && numberOfRequests > maxTpt) {
-                            sum -= weights[i];
-                            weights[i] = 0;
-                            break; 
-                        }
-                    }
-                    return select;
-                }
-            }
-        }
-        rejAdder.increment();
-        logger.info("rejects=" + rejAdder.sum() + ", req=" + numberOfRequests + ", max=" + tptMap);
-        return null;
-        //
-        // if (sum > 0) {
+        // Map<String, Long> tptMap = maxTptMap.get(candidates.get(0).getInterface());
+        // long numberOfRequests = 0;
+        // while (sum > 0) {
         //     int r = ThreadLocalRandom.current().nextInt(sum);
         //     for (int i = 0; i < size; i++) {
         //         r -= weights[i];
         //         if (r < 0) {
-        //             return candidates.get(i);
+        //             Invoker<T> select = candidates.get(i);
+        //             if (tptMap != null) {
+        //                 InstanceStats stats = LBStatistics.STATS.getInstanceStats(select);
+        //                 Long maxTpt = tptMap.get(select.getUrl().getAddress());
+        //                 numberOfRequests = stats.getNumberOfRequests(0);
+        //                 if (maxTpt != null && numberOfRequests > maxTpt) {
+        //                     sum -= weights[i];
+        //                     weights[i] = 0;
+        //                     break;
+        //                 }
+        //             }
+        //             return select;
         //         }
         //     }
         // }
+        // rejAdder.increment();
+        // logger.info("rejects=" + rejAdder.sum() + ", req=" + numberOfRequests + ", max=" + tptMap);
+        // return null;
         //
-        // return candidates.get(ThreadLocalRandom.current().nextInt(size));
+        if (sum > 0) {
+            int r = ThreadLocalRandom.current().nextInt(sum);
+            for (int i = 0; i < size; i++) {
+                r -= weights[i];
+                if (r < 0) {
+                    return candidates.get(i);
+                }
+            }
+        }
+
+        return candidates.get(ThreadLocalRandom.current().nextInt(size));
     }
 
     private <T> int[] weighting(List<Invoker<T>> invokers) {
@@ -153,7 +153,7 @@ public class SelfAdaptiveRule implements LBRule {
 
             ServerStats serverStats = stats.getServerStats();
             RuntimeInfo info = serverStats.getRuntimeInfo();
-            logger.info(stats.toString() + ", runtime info : " + info);
+            logger.info("STATS : " + stats);
             if (nonNull(info)) {
                 double processCpuLoad = info.getProcessCpuLoad();
                 loadTotal += processCpuLoad;
@@ -173,7 +173,7 @@ public class SelfAdaptiveRule implements LBRule {
                 w3 += (loadTotal - load) / loadTotal;
             }
 
-            int w = (int) ((w1 * .3d + w2 * .5d + w3 * .2d) * 100) + 1;
+            int w = (int) ((w1 * .2d + w2 * .5d + w3 * .3d) * 100) + 1;
             weightMap.put(key, w);
         }
 
