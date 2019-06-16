@@ -5,6 +5,8 @@ import com.aliware.tianchi.common.metric.ServerStats;
 import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SkipListCounter;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.RpcContext;
 
 import java.util.LinkedList;
@@ -16,6 +18,8 @@ import java.util.concurrent.TimeUnit;
  */
 public class NearRuntimeHelper {
 
+    private static final Logger logger = LoggerFactory.getLogger(NearRuntimeHelper.class);
+    
     public static final NearRuntimeHelper INSTANCE = new NearRuntimeHelper();
 
     private int bufSize = 5;
@@ -33,12 +37,13 @@ public class NearRuntimeHelper {
                                  if (buf.size() >= bufSize) {
                                      RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
                                      stats.getServerStats().setRuntimeInfo(info);
+                                     logger.info("update " + info);
                                      buf.pollLast();
                                  }
                              }
                          },
                          500,
-                         300,
+                         500,
                          TimeUnit.MILLISECONDS);
     }
 

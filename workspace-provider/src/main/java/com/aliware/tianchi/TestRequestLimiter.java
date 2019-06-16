@@ -1,10 +1,13 @@
 package com.aliware.tianchi;
 
+import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.remoting.exchange.Request;
 import org.apache.dubbo.remoting.transport.RequestLimiter;
 
 import java.util.concurrent.ThreadLocalRandom;
+
+import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author daofeng.xjf
@@ -15,7 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class TestRequestLimiter implements RequestLimiter {
 
-    private static final double THRESHOLD = .95d;
+    private static final double THRESHOLD = .90d;
     private final NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
 
     /**
@@ -26,11 +29,14 @@ public class TestRequestLimiter implements RequestLimiter {
      */
     @Override
     public boolean tryAcquire(Request request, int activeTaskCount) {
-        double processCpuLoad = helper.getRuntimeInfo().getProcessCpuLoad();
-        if (processCpuLoad > THRESHOLD) {
-            double rate = processCpuLoad - THRESHOLD;
-            double r = ThreadLocalRandom.current().nextDouble(1);
-            return r > rate;
+        RuntimeInfo runtimeInfo = helper.getRuntimeInfo();
+        if (nonNull(runtimeInfo)) {
+            double processCpuLoad = runtimeInfo.getProcessCpuLoad();
+            if (processCpuLoad > THRESHOLD) {
+                double rate = processCpuLoad - THRESHOLD;
+                double r = ThreadLocalRandom.current().nextDouble(1);
+                return r > rate;
+            }
         }
         return true;
     }
