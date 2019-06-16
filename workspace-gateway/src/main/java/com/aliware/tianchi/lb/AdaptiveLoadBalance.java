@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author yangxf
@@ -25,12 +26,17 @@ public class AdaptiveLoadBalance implements LoadBalance {
     private static Comparator<SnapshotStats> CMP = (o1, o2) -> {
         long a1 = o1.getAvgResponseMs(),
                 a2 = o2.getAvgResponseMs();
-        if (a1 != a2) {
-            return (int) (a1 - a2);
+
+        if (a1 == a2) {
+            RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
+                    r2 = o2.getServerStats().getRuntimeInfo();
+            if (nonNull(r1) && nonNull(r2)) {
+                double d = r1.getProcessCpuLoad() - r2.getProcessCpuLoad();
+                return d > 0 ? 1 : d < 0 ? -1 : 0;
+            }
         }
 
-        return (int) (o1.getServerStats().getRuntimeInfo().getProcessCpuLoad() -
-                      o2.getServerStats().getRuntimeInfo().getProcessCpuLoad());
+        return (int) (a1 - a2);
     };
 
     @Override
@@ -42,8 +48,15 @@ public class AdaptiveLoadBalance implements LoadBalance {
             if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
+            logger.info(invoker.getUrl().getAddress() +
+                        ", avg=" + stats.getAvgResponseMs() +
+                        ", succ=" + stats.getNumberOfSuccesses() +
+                        ", fai=" + stats.getNumberOfFailures() +
+                        ", tpt=" + stats.getThroughput() +
+                        ", run=" + stats.getServerStats().getRuntimeInfo()
+                       );
             mapping.put(stats, invoker);
-            queue.add(stats);
+            queue.offer(stats);
         }
 
         for (; ; ) {
@@ -57,15 +70,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 continue;
             }
 
-            Invoker<T> tInvoker = mapping.get(stats);
-            logger.info(tInvoker.getUrl().getAddress() +
-                    ", avg=" + stats.getAvgResponseMs() +
-                        ", succ=" + stats.getNumberOfSuccesses() +
-                        ", fai=" + stats.getNumberOfFailures() +
-                        ", tpt=" + stats.getThroughput() +
-                        ", run=" + stats.getServerStats().getRuntimeInfo()
-                       );
-            return tInvoker;
+            return mapping.get(stats);
         }
 
         return null;
