@@ -19,19 +19,19 @@ import java.util.concurrent.TimeUnit;
 public class CallbackServiceImpl implements CallbackService {
 
     public CallbackServiceImpl() {
-        Executors.newSingleThreadScheduledExecutor()
-                 .scheduleWithFixedDelay(() -> {
-                     if (!listeners.isEmpty()) {
-                         String msg = NearRuntimeHelper.INSTANCE.getCurrent().toString();
-                         for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
-                             try {
-                                 entry.getValue().receiveServerMsg(msg);
-                             } catch (Throwable t) {
-                                 // listeners.remove(entry.getKey());
-                             }
-                         }
-                     }
-                 }, 1000, 600, TimeUnit.MILLISECONDS);
+        // Executors.newSingleThreadScheduledExecutor()
+        //          .scheduleWithFixedDelay(() -> {
+        //              if (!listeners.isEmpty()) {
+        //                  String msg = NearRuntimeHelper.INSTANCE.getRuntimeInfo().toString();
+        //                  for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+        //                      try {
+        //                          entry.getValue().receiveServerMsg(msg);
+        //                      } catch (Throwable t) {
+        //                          // listeners.remove(entry.getKey());
+        //                      }
+        //                  }
+        //              }
+        //          }, 1000, 1000, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -43,6 +43,6 @@ public class CallbackServiceImpl implements CallbackService {
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
-        // listener.receiveServerMsg(helper.getCurrent().toString()); // send notification for change
+        // listener.receiveServerMsg(helper.getRuntimeInfo().toString()); // send notification for change
     }
 }

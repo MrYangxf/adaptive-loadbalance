@@ -1,6 +1,8 @@
 package com.aliware.tianchi;
 
-import com.aliware.tianchi.lb.metric.InstanceStats;
+import com.aliware.tianchi.common.metric.InstanceStats;
+import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
@@ -8,6 +10,8 @@ import org.apache.dubbo.rpc.*;
 import org.apache.dubbo.rpc.support.RpcUtils;
 
 import java.util.concurrent.CompletableFuture;
+
+import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
 /**
  * @author daofeng.xjf
@@ -18,46 +22,21 @@ import java.util.concurrent.CompletableFuture;
  */
 @Activate(group = Constants.CONSUMER)
 public class TestClientFilter implements Filter {
-
-    private LBStatistics lbStats = LBStatistics.STATS;
+    
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        boolean isAsync = RpcUtils.isAsync(invoker.getUrl(), invocation);
-        if (isAsync) {
-            return invokeAsync(invoker, invocation);
-        } else {
-            return invokeSync(invoker, invocation);
-        }
+        return invoker.invoke(invocation);
     }
 
-    private Result invokeAsync(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        InstanceStats stats = lbStats.getInstanceStats(invoker);
-        long startMs = System.currentTimeMillis();
-        Result result = invoker.invoke(invocation);
-        CompletableFuture<Object> f = RpcContext.getContext().getCompletableFuture();
-        if (f != null) {
-            f.whenComplete((x, y) -> stats.success(System.currentTimeMillis() - startMs))
-             .exceptionally(t -> {
-                 // todo
-                 stats.failure(System.currentTimeMillis() - startMs);
-                 return null;
-             });
+    @Override
+    public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
+        String statsText = result.getAttachment("STATS");
+        if (nonEmpty(statsText)) {
+            SnapshotStats snapshotStats = TimeWindowInstanceStats.fromString(statsText);
+            LBStatistics.updateInstanceStats(invoker, invocation, snapshotStats);
         }
         return result;
-    }
-
-    private Result invokeSync(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        InstanceStats stats = lbStats.getInstanceStats(invoker);
-        long startMs = System.currentTimeMillis();
-        try {
-            Result result = invoker.invoke(invocation);
-            stats.success(System.currentTimeMillis() - startMs);
-            return result;
-        } catch (Exception e) {
-            stats.failure(System.currentTimeMillis() - startMs);
-            throw e;
-        }
     }
 }
     
