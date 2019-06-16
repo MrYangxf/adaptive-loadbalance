@@ -48,13 +48,15 @@ public class AdaptiveLoadBalance implements LoadBalance {
             if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
-            logger.info(invoker.getUrl().getAddress() +
-                        ", avg=" + stats.getAvgResponseMs() +
-                        ", succ=" + stats.getNumberOfSuccesses() +
-                        ", fai=" + stats.getNumberOfFailures() +
-                        ", tpt=" + stats.getThroughput() +
-                        ", run=" + stats.getServerStats().getRuntimeInfo()
-                       );
+            if ((ThreadLocalRandom.current().nextInt() & 7) == 0) {
+                logger.info(invoker.getUrl().getAddress() +
+                            ", avg=" + stats.getAvgResponseMs() +
+                            ", succ=" + stats.getNumberOfSuccesses() +
+                            ", fai=" + stats.getNumberOfFailures() +
+                            ", tpt=" + stats.getThroughput() +
+                            ", run=" + stats.getServerStats().getRuntimeInfo()
+                           );
+            }
             mapping.put(stats, invoker);
             queue.offer(stats);
         }
