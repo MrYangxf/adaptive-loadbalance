@@ -1,15 +1,11 @@
 package com.aliware.tianchi;
 
-import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
-import org.apache.dubbo.rpc.support.RpcUtils;
-
-import java.util.concurrent.CompletableFuture;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
@@ -22,7 +18,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
  */
 @Activate(group = Constants.CONSUMER)
 public class TestClientFilter implements Filter {
-    
+
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
