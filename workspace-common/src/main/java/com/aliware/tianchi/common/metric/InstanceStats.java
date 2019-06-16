@@ -1,4 +1,4 @@
-package com.aliware.tianchi.lb.metric;
+package com.aliware.tianchi.common.metric;
 
 
 import java.io.Serializable;
@@ -16,6 +16,12 @@ public interface InstanceStats extends Serializable {
         UNDERLOAD
     }
 
+    long startTimeMs();
+    
+    default long endTimeMs() {
+        return System.currentTimeMillis();
+    }
+    
     String getAddress();
 
     /**
@@ -74,6 +80,10 @@ public interface InstanceStats extends Serializable {
 
     long getNumberOfRequests(String serviceId);
 
+    long getNumberOfSuccesses();
+    
+    long getNumberOfSuccesses(String serviceId);
+    
     long getNumberOfFailures();
 
     long getNumberOfFailures(String serviceId);
@@ -81,5 +91,6 @@ public interface InstanceStats extends Serializable {
     long getNumberOfRejections();
 
     long getNumberOfRejections(String serviceId);
-
+    
+    String snapshot(String serviceId);
 }

@@ -1,9 +1,10 @@
 package com.aliware.tianchi.lb;
 
+import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.RuntimeInfo;
-import com.aliware.tianchi.lb.metric.InstanceStats;
+import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
-import com.aliware.tianchi.lb.metric.ServerStats;
+import com.aliware.tianchi.common.metric.ServerStats;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -67,7 +68,7 @@ public class WeightedLoadBalance implements LoadBalance {
         return invokers.get(ThreadLocalRandom.current().nextInt(size));
     }
 
-    Map<String, Integer> calculate(String serviceId, Map<String, InstanceStats> statsMap, Map<String, Integer> oldWeightMap) {
+    Map<String, Integer> calculate(String serviceId, Map<String, SnapshotStats> statsMap, Map<String, Integer> oldWeightMap) {
         Map<String, Integer> weightMap = new HashMap<>();
 
         double loadTotal = 0, avgTotal = 0, failTotal = 0;
@@ -75,17 +76,17 @@ public class WeightedLoadBalance implements LoadBalance {
         Map<String, Double> loadMap = new HashMap<>();
         Map<String, Long> failMap = new HashMap<>();
 
-        for (Map.Entry<String, InstanceStats> statsEntry : statsMap.entrySet()) {
+        for (Map.Entry<String, SnapshotStats> statsEntry : statsMap.entrySet()) {
             String address = statsEntry.getKey();
-            InstanceStats stats = statsEntry.getValue();
+            SnapshotStats stats = statsEntry.getValue();
 
-            long rejections = stats.getNumberOfRejections(serviceId);
-            long notSuccesses = stats.getNumberOfFailures(serviceId) + rejections;
+            long rejections = stats.getNumberOfRejections();
+            long notSuccesses = stats.getNumberOfFailures() + rejections;
 
             failTotal += notSuccesses;
             failMap.put(address, notSuccesses);
 
-            long avgResponseMs = stats.getAvgResponseMs(serviceId);
+            long avgResponseMs = stats.getAvgResponseMs();
             avgTotal += avgResponseMs;
             avgMap.put(address, avgResponseMs);
 
@@ -141,23 +142,11 @@ public class WeightedLoadBalance implements LoadBalance {
     class WeightedTask implements Runnable {
         @Override
         public void run() {
-            Map<String, InstanceStats> registry = LBStatistics.STATS.getRegistry();
+            Map<String, Map<String, SnapshotStats>> allStatsMap = LBStatistics.getRegistry();
 
-            Map<String, Map<String, InstanceStats>> allStatsMap = new HashMap<>();
-            for (Map.Entry<String, InstanceStats> entry : registry.entrySet()) {
-                String address = entry.getKey();
-                InstanceStats stats = entry.getValue();
-
-                Set<String> serviceIds = stats.getServiceIds();
-                for (String serviceId : serviceIds) {
-                    allStatsMap.computeIfAbsent(serviceId, k -> new HashMap<>())
-                               .putIfAbsent(address, stats);
-                }
-            }
-
-            for (Map.Entry<String, Map<String, InstanceStats>> entry : allStatsMap.entrySet()) {
+            for (Map.Entry<String, Map<String, SnapshotStats>> entry : allStatsMap.entrySet()) {
                 String serviceId = entry.getKey();
-                Map<String, InstanceStats> statsMap = entry.getValue();
+                Map<String, SnapshotStats> statsMap = entry.getValue();
                 Map<String, Integer> oldWeightMap = weightCache.get(serviceId);
                 Map<String, Integer> newWeightMap = calculate(serviceId, statsMap, oldWeightMap);
                 weightCache.put(serviceId, newWeightMap);

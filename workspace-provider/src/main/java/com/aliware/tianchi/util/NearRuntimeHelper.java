@@ -1,6 +1,11 @@
 package com.aliware.tianchi.util;
 
+import com.aliware.tianchi.common.metric.InstanceStats;
+import com.aliware.tianchi.common.metric.ServerStats;
+import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.common.util.RuntimeInfo;
+import com.aliware.tianchi.common.util.SkipListCounter;
+import org.apache.dubbo.rpc.RpcContext;
 
 import java.util.LinkedList;
 import java.util.concurrent.Executors;
@@ -14,10 +19,10 @@ public class NearRuntimeHelper {
     public static final NearRuntimeHelper INSTANCE = new NearRuntimeHelper();
 
     private int bufSize = 5;
-    
+
     private final LinkedList<RuntimeInfo> buf = new LinkedList<>();
 
-    private volatile RuntimeInfo current = new RuntimeInfo();
+    private final InstanceStats stats = createStats();
 
     private NearRuntimeHelper() {
         Executors.newSingleThreadScheduledExecutor()
@@ -26,7 +31,8 @@ public class NearRuntimeHelper {
                              synchronized (buf) {
                                  buf.addFirst(new RuntimeInfo());
                                  if (buf.size() >= bufSize) {
-                                     current = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
+                                     RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
+                                     stats.getServerStats().setRuntimeInfo(info);
                                      buf.pollLast();
                                  }
                              }
@@ -36,8 +42,19 @@ public class NearRuntimeHelper {
                          TimeUnit.MILLISECONDS);
     }
 
-    public RuntimeInfo getCurrent() {
-        return current;
+    public RuntimeInfo getRuntimeInfo() {
+        return stats.getServerStats().getRuntimeInfo();
+    }
+    
+    public InstanceStats getInstanceStats() {
+        return stats;
     }
 
+    private InstanceStats createStats() {
+        String address = RpcContext.getServerContext().getLocalAddressString();
+        return new TimeWindowInstanceStats(address,
+                                           new ServerStats(address),
+                                           3, 1, TimeUnit.SECONDS,
+                                           SkipListCounter::new);
+    }
 }

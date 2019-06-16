@@ -1,4 +1,4 @@
-package com.aliware.tianchi.lb.metric;
+package com.aliware.tianchi.common.metric;
 
 import com.aliware.tianchi.common.util.RuntimeInfo;
 

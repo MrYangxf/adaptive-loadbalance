@@ -26,7 +26,7 @@ public class TestRequestLimiter implements RequestLimiter {
      */
     @Override
     public boolean tryAcquire(Request request, int activeTaskCount) {
-        double processCpuLoad = helper.getCurrent().getProcessCpuLoad();
+        double processCpuLoad = helper.getRuntimeInfo().getProcessCpuLoad();
         if (processCpuLoad > THRESHOLD) {
             double rate = processCpuLoad - THRESHOLD;
             double r = ThreadLocalRandom.current().nextDouble(1);

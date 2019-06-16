@@ -22,17 +22,7 @@ public class CallbackListenerImpl implements CallbackListener {
 
     @Override
     public void receiveServerMsg(String msg) {
-        if (nonEmpty(msg)) {
-            RuntimeInfo runtimeInfo = OSUtil.newRuntimeInfo(msg);
-            String remoteAddressString = RpcContext.getContext().getRemoteAddressString();
-            LBStatistics.STATS.updateRuntimeInfo(remoteAddressString, runtimeInfo);
-            InetSocketAddress remoteAddress = RpcContext.getContext().getRemoteAddress();
-            
-            String hostAddress = remoteAddress.getHostName() + ":" + remoteAddress.getPort();
-            if (!hostAddress.equals(remoteAddressString)) {
-                LBStatistics.STATS.updateRuntimeInfo(hostAddress, runtimeInfo);
-            }
-        }
+        
     }
 
 }
