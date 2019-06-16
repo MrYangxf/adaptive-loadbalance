@@ -42,6 +42,11 @@ public class AdaptiveLoadBalance implements LoadBalance {
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
+
+        if (ThreadLocalRandom.current().nextInt() % invokers.size() == 0) {
+            return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
+        }
+
         PriorityQueue<SnapshotStats> queue = new PriorityQueue<>(CMP);
         for (Invoker<T> invoker : invokers) {
             SnapshotStats stats = LBStatistics.getInstanceStats(invoker, invocation);
@@ -49,17 +54,18 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
 
+            long waits = LBStatistics.getWaits(invoker.getUrl().getAddress());
             if ((ThreadLocalRandom.current().nextInt() & 7) == 0) {
                 logger.info(invoker.getUrl().getAddress() +
+                            ", waits=" + waits +
                             ", avg=" + stats.getAvgResponseMs() +
-                            ", succ=" + stats.getNumberOfSuccesses() +
+                            ", suc=" + stats.getNumberOfSuccesses() +
                             ", fai=" + stats.getNumberOfFailures() +
                             ", tpt=" + stats.getThroughput() +
                             ", run=" + stats.getServerStats().getRuntimeInfo()
                            );
             }
 
-            long waits = LBStatistics.getWaits(invoker.getUrl().getAddress());
             if (waits > stats.getServerStats().getRuntimeInfo().getThreadCount() - 20) {
                 continue;
             }

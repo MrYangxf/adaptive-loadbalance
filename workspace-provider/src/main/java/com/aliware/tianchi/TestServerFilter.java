@@ -6,6 +6,8 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * @author daofeng.xjf
  * <p>
