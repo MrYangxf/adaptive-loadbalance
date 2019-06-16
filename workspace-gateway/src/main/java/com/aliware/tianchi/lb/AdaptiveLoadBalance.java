@@ -45,7 +45,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
         PriorityQueue<SnapshotStats> queue = new PriorityQueue<>(CMP);
         for (Invoker<T> invoker : invokers) {
             SnapshotStats stats = LBStatistics.getInstanceStats(invoker, invocation);
-            if (isNull(stats)) {
+            if (isNull(stats) || isNull(stats.getServerStats().getRuntimeInfo())) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
             if ((ThreadLocalRandom.current().nextInt() & 7) == 0) {
