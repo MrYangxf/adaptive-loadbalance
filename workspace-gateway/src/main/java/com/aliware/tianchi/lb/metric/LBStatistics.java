@@ -8,8 +8,10 @@ import org.apache.dubbo.rpc.Invoker;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author yangxf
@@ -20,6 +22,8 @@ public class LBStatistics {
 
     // key=serviceId, value={key=address, value=SnapshotStats}
     private static final Map<String, Map<String, SnapshotStats>> registry = new ConcurrentHashMap<>();
+
+    private static final Map<String, AtomicLong> waitCounterMap = new ConcurrentHashMap<>();
 
     public static Map<String, SnapshotStats> getInstanceStatsMap(Invoker<?> invoker, Invocation invocation) {
         checkNotNull(invoker, "invoker");
@@ -47,7 +51,26 @@ public class LBStatistics {
         String address = invoker.getUrl().getAddress();
         instanceStatsMap.put(address, snapshotStats);
     }
-    
+
+    public static void increment(String address) {
+        waitCounterMap.computeIfAbsent(address, k -> new AtomicLong()).incrementAndGet();
+    }
+
+    public static void decrement(String address) {
+        AtomicLong counter = waitCounterMap.get(address);
+        if (nonNull(counter)) {
+            counter.decrementAndGet();
+        }
+    }
+
+    public static long getWaits(String address) {
+        AtomicLong counter = waitCounterMap.get(address);
+        if (nonNull(counter)) {
+            return counter.get();
+        }
+        return 0;
+    }
+
     public static Map<String, Map<String, SnapshotStats>> getRegistry() {
         return registry;
     }

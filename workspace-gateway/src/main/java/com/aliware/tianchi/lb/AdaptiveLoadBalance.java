@@ -48,6 +48,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             if (isNull(stats) || isNull(stats.getServerStats().getRuntimeInfo())) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
+
             if ((ThreadLocalRandom.current().nextInt() & 7) == 0) {
                 logger.info(invoker.getUrl().getAddress() +
                             ", avg=" + stats.getAvgResponseMs() +
@@ -57,6 +58,12 @@ public class AdaptiveLoadBalance implements LoadBalance {
                             ", run=" + stats.getServerStats().getRuntimeInfo()
                            );
             }
+
+            long waits = LBStatistics.getWaits(invoker.getUrl().getAddress());
+            if (waits > stats.getServerStats().getRuntimeInfo().getThreadCount() - 20) {
+                continue;
+            }
+
             mapping.put(stats, invoker);
             queue.offer(stats);
         }
@@ -68,10 +75,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
-            if (runtimeInfo.getProcessCpuLoad() > 0.8) {
+            if (runtimeInfo.getProcessCpuLoad() > 0.8 ||
+                ThreadLocalRandom.current().nextBoolean()) {
                 continue;
             }
-
             return mapping.get(stats);
         }
 

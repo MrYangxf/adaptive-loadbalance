@@ -22,6 +22,7 @@ public class TestClientFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
+        LBStatistics.increment(invoker.getUrl().getAddress());
         return invoker.invoke(invocation);
     }
 
@@ -32,6 +33,7 @@ public class TestClientFilter implements Filter {
             SnapshotStats snapshotStats = TimeWindowInstanceStats.fromString(statsText);
             LBStatistics.updateInstanceStats(invoker, invocation, snapshotStats);
         }
+        LBStatistics.decrement(invoker.getUrl().getAddress());
         return result;
     }
 }
