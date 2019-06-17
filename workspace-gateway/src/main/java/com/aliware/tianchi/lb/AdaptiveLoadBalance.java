@@ -31,8 +31,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
             RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
                     r2 = o2.getServerStats().getRuntimeInfo();
             if (nonNull(r1) && nonNull(r2)) {
-                double d = r1.getProcessCpuLoad() - r2.getProcessCpuLoad();
-                return d > 0 ? 1 : d < 0 ? -1 : 0;
+                double d = (1 - r1.getProcessCpuLoad()) * r1.getAvailableProcessors() -
+                           (1 - r2.getProcessCpuLoad()) * r2.getAvailableProcessors();
+                return d > 0 ? -1 : d < 0 ? 1 : 0;
             }
         }
 
@@ -58,16 +59,16 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             long waits = LBStatistics.getWaits(invoker.getUrl().getAddress());
-            if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
-                logger.info(invoker.getUrl().getAddress() +
-                            ", waits=" + waits +
-                            ", avg=" + stats.getAvgResponseMs() +
-                            ", suc=" + stats.getNumberOfSuccesses() +
-                            ", fai=" + stats.getNumberOfFailures() +
-                            ", tpt=" + stats.getThroughput() +
-                            ", run=" + runtimeInfo
-                           );
-            }
+            // if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
+            //     logger.info(invoker.getUrl().getAddress() +
+            //                 ", waits=" + waits +
+            //                 ", avg=" + stats.getAvgResponseMs() +
+            //                 ", suc=" + stats.getNumberOfSuccesses() +
+            //                 ", fai=" + stats.getNumberOfFailures() +
+            //                 ", tpt=" + stats.getThroughput() +
+            //                 ", run=" + runtimeInfo
+            //                );
+            // }
 
             double idleCpuLoad = (1 - runtimeInfo.getProcessCpuLoad()) *
                                  runtimeInfo.getAvailableProcessors();
@@ -84,9 +85,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
             queue.offer(stats);
         }
 
-        if (queue.isEmpty()) {
-            logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
-        }
+        // if (queue.isEmpty()) {
+        //     assert mostIdleIvk != null;
+        //     logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
+        // }
 
         int mask = 0x80000001, n = 0;
         for (; ; ) {
