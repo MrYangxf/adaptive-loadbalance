@@ -47,26 +47,35 @@ public class AdaptiveLoadBalance implements LoadBalance {
             return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
         }
 
+        double minLoad = Long.MAX_VALUE;
+        Invoker<T> minLoadIvk = null;
         PriorityQueue<SnapshotStats> queue = new PriorityQueue<>(CMP);
         for (Invoker<T> invoker : invokers) {
             SnapshotStats stats = LBStatistics.getInstanceStats(invoker, invocation);
-            if (isNull(stats) || isNull(stats.getServerStats().getRuntimeInfo())) {
+            RuntimeInfo runtimeInfo;
+            if (isNull(stats) || isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
 
             long waits = LBStatistics.getWaits(invoker.getUrl().getAddress());
-            if ((ThreadLocalRandom.current().nextInt() & 7) == 0) {
+            if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
                 logger.info(invoker.getUrl().getAddress() +
                             ", waits=" + waits +
                             ", avg=" + stats.getAvgResponseMs() +
                             ", suc=" + stats.getNumberOfSuccesses() +
                             ", fai=" + stats.getNumberOfFailures() +
                             ", tpt=" + stats.getThroughput() +
-                            ", run=" + stats.getServerStats().getRuntimeInfo()
+                            ", run=" + runtimeInfo
                            );
             }
 
-            if (waits > stats.getServerStats().getRuntimeInfo().getThreadCount() - 20) {
+            double processCpuLoad = runtimeInfo.getProcessCpuLoad();
+            if (processCpuLoad < minLoad) {
+                minLoad = processCpuLoad;
+                minLoadIvk = invoker;
+            }
+
+            if (waits > runtimeInfo.getThreadCount() * .8) {
                 continue;
             }
 
@@ -74,6 +83,12 @@ public class AdaptiveLoadBalance implements LoadBalance {
             queue.offer(stats);
         }
 
+        if (queue.isEmpty()) {
+            logger.info("queue is empty, minLoadIvk" + minLoadIvk.getUrl().getAddress());
+        }
+
+
+        int mask = 0x80000001, n = 0;
         for (; ; ) {
             SnapshotStats stats = queue.poll();
             if (stats == null) {
@@ -82,12 +97,12 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
             if (runtimeInfo.getProcessCpuLoad() > 0.8 ||
-                ThreadLocalRandom.current().nextBoolean()) {
+                (ThreadLocalRandom.current().nextInt() & (n = (n << 1) | mask)) == 0) {
                 continue;
             }
             return mapping.get(stats);
         }
 
-        return null;
+        return minLoadIvk;
     }
 }
