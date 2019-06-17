@@ -47,8 +47,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
             return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
         }
 
-        double minLoad = Long.MAX_VALUE;
-        Invoker<T> minLoadIvk = null;
+        double mostIdleLoad = Long.MIN_VALUE;
+        Invoker<T> mostIdleIvk = null;
         PriorityQueue<SnapshotStats> queue = new PriorityQueue<>(CMP);
         for (Invoker<T> invoker : invokers) {
             SnapshotStats stats = LBStatistics.getInstanceStats(invoker, invocation);
@@ -69,10 +69,11 @@ public class AdaptiveLoadBalance implements LoadBalance {
                            );
             }
 
-            double processCpuLoad = runtimeInfo.getProcessCpuLoad();
-            if (processCpuLoad < minLoad) {
-                minLoad = processCpuLoad;
-                minLoadIvk = invoker;
+            double idleCpuLoad = (1 - runtimeInfo.getProcessCpuLoad()) *
+                                 runtimeInfo.getAvailableProcessors();
+            if (idleCpuLoad > mostIdleLoad) {
+                mostIdleLoad = idleCpuLoad;
+                mostIdleIvk = invoker;
             }
 
             if (waits > runtimeInfo.getThreadCount() * .8) {
@@ -84,9 +85,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
         }
 
         if (queue.isEmpty()) {
-            logger.info("queue is empty, minLoadIvk" + minLoadIvk.getUrl().getAddress());
+            logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
         }
-
 
         int mask = 0x80000001, n = 0;
         for (; ; ) {
@@ -103,6 +103,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
             return mapping.get(stats);
         }
 
-        return minLoadIvk;
+        return mostIdleIvk;
     }
 }
