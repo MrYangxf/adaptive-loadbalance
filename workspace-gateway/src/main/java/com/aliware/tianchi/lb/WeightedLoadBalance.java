@@ -142,16 +142,16 @@ public class WeightedLoadBalance implements LoadBalance {
     class WeightedTask implements Runnable {
         @Override
         public void run() {
-            Map<String, Map<String, SnapshotStats>> allStatsMap = LBStatistics.getRegistry();
-
-            for (Map.Entry<String, Map<String, SnapshotStats>> entry : allStatsMap.entrySet()) {
-                String serviceId = entry.getKey();
-                Map<String, SnapshotStats> statsMap = entry.getValue();
-                Map<String, Integer> oldWeightMap = weightCache.get(serviceId);
-                Map<String, Integer> newWeightMap = calculate(serviceId, statsMap, oldWeightMap);
-                weightCache.put(serviceId, newWeightMap);
-                logger.info(String.format("update weight %s > %s", oldWeightMap, newWeightMap));
-            }
+            // Map<String, Map<String, SnapshotStats>> allStatsMap = LBStatistics.getRegistry();
+            //
+            // for (Map.Entry<String, Map<String, SnapshotStats>> entry : allStatsMap.entrySet()) {
+            //     String serviceId = entry.getKey();
+            //     Map<String, SnapshotStats> statsMap = entry.getValue();
+            //     Map<String, Integer> oldWeightMap = weightCache.get(serviceId);
+            //     Map<String, Integer> newWeightMap = calculate(serviceId, statsMap, oldWeightMap);
+            //     weightCache.put(serviceId, newWeightMap);
+            //     logger.info(String.format("update weight %s > %s", oldWeightMap, newWeightMap));
+            // }
         }
     }
 }
