@@ -47,7 +47,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
 
-        if (ThreadLocalRandom.current().nextBoolean()) {
+        if (ThreadLocalRandom.current().nextInt() % invokers.size() == 0) {
             return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
         }
 
