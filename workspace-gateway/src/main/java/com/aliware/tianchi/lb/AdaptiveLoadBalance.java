@@ -66,16 +66,16 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             long waits = LBStatistics.getWaits(invoker.getUrl().getAddress());
-            if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
-                logger.info(invoker.getUrl().getAddress() +
-                            ", waits=" + waits +
-                            ", avg=" + stats.getAvgResponseMs() +
-                            ", suc=" + stats.getNumberOfSuccesses() +
-                            ", fai=" + stats.getNumberOfFailures() +
-                            ", tpt=" + stats.getThroughput() +
-                            ", run=" + runtimeInfo
-                           );
-            }
+            // if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
+            //     logger.info(invoker.getUrl().getAddress() +
+            //                 ", waits=" + waits +
+            //                 ", avg=" + stats.getAvgResponseMs() +
+            //                 ", suc=" + stats.getNumberOfSuccesses() +
+            //                 ", fai=" + stats.getNumberOfFailures() +
+            //                 ", tpt=" + stats.getThroughput() +
+            //                 ", run=" + runtimeInfo
+            //                );
+            // }
 
             double idleCpus = (1 - runtimeInfo.getProcessCpuLoad()) *
                               runtimeInfo.getAvailableProcessors();
@@ -101,11 +101,11 @@ public class AdaptiveLoadBalance implements LoadBalance {
         //     queue.clear();
         //     return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
         // }
-
-        if (queue.isEmpty()) {
-            assert mostIdleIvk != null;
-            logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
-        }
+        //
+        // if (queue.isEmpty()) {
+        //     assert mostIdleIvk != null;
+        //     logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
+        // }
 
         int mask = 0x80000001, n = 0;
         for (; ; ) {
