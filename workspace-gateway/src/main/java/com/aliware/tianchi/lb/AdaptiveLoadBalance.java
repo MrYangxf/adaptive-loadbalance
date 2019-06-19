@@ -107,7 +107,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
         //     logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
         // }
 
-        int mask = 0x80000001, n = 0;
+        int mask = 0x80000000, n = 0;
         for (; ; ) {
             SnapshotStats stats = queue.poll();
             if (stats == null) {

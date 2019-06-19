@@ -1,7 +1,6 @@
 package com.aliware.tianchi.lb.metric;
 
 import com.aliware.tianchi.common.metric.SnapshotStats;
-import com.aliware.tianchi.common.util.Sequence;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invocation;
@@ -9,6 +8,7 @@ import org.apache.dubbo.rpc.Invoker;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.LongAdder;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -23,7 +23,7 @@ public class LBStatistics {
     // key=serviceId, value={key=address, value=SnapshotStats}
     private static final Map<String, Map<String, SnapshotStats>> registry = new ConcurrentHashMap<>();
 
-    private static final Map<String, Sequence> waitCounterMap = new ConcurrentHashMap<>();
+    private static final Map<String, LongAdder> waitCounterMap = new ConcurrentHashMap<>();
 
     public static Map<String, SnapshotStats> getInstanceStatsMap(Invoker<?> invoker, Invocation invocation) {
         checkNotNull(invoker, "invoker");
@@ -53,20 +53,20 @@ public class LBStatistics {
     }
 
     public static void increment(String address) {
-        waitCounterMap.computeIfAbsent(address, k -> new Sequence(0)).incrementAndGet();
+        waitCounterMap.computeIfAbsent(address, k -> new LongAdder()).increment();
     }
 
     public static void decrement(String address) {
-        Sequence counter = waitCounterMap.get(address);
+        LongAdder counter = waitCounterMap.get(address);
         if (nonNull(counter)) {
-            counter.decrementAndGet();
+            counter.decrement();
         }
     }
 
     public static long getWaits(String address) {
-        Sequence counter = waitCounterMap.get(address);
+        LongAdder counter = waitCounterMap.get(address);
         if (nonNull(counter)) {
-            return counter.get();
+            return counter.longValue();
         }
         return 0;
     }
