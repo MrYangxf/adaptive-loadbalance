@@ -59,7 +59,7 @@ public class NearRuntimeHelper {
         String address = RpcContext.getServerContext().getLocalAddressString();
         return new TimeWindowInstanceStats(address,
                                            new ServerStats(address),
-                                           1, 1, TimeUnit.SECONDS,
+                                           2, 1, TimeUnit.SECONDS,
                                            SkipListCounter::new);
     }
 }
