@@ -37,7 +37,7 @@ public class TestServerFilter implements Filter {
             stats.success(serviceId, System.currentTimeMillis() - startTimeMs);
         }
 
-        if ((ThreadLocalRandom.current().nextInt() & 0x01010101) == 0)
+        if ((ThreadLocalRandom.current().nextInt() & 0x80010001) == 0)
             result.setAttachment("STATS", stats.snapshot(serviceId));
         return result;
     }
