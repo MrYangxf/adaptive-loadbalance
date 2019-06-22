@@ -1,7 +1,6 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.lb.AdaptiveLoadBalance;
-import com.aliware.tianchi.lb.WeightedLoadBalance;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
 import org.apache.dubbo.rpc.Invoker;

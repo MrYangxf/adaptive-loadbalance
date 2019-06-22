@@ -1,17 +1,18 @@
 package com.aliware.tianchi.common.metric;
 
-import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SegmentCounter;
 import com.aliware.tianchi.common.util.SegmentCounterFactory;
 import com.aliware.tianchi.common.util.SkipListCounter;
 
+import java.lang.management.ManagementFactory;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.aliware.tianchi.common.util.ObjectUtil.*;
+import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.defaultIfNull;
 
 /**
  * 基于时间窗口的统计信息
@@ -20,9 +21,6 @@ import static com.aliware.tianchi.common.util.ObjectUtil.*;
  */
 public class TimeWindowInstanceStats implements InstanceStats {
     private static final long serialVersionUID = -1040897703729118186L;
-
-    private static final String SEPARATOR = "_";
-    private static final String GROUP_SEPARATOR = "@";
 
     private static final long DEFAULT_WINDOW_SIZE = 10;
     private static final long DEFAULT_TIME_INTERVAL = TimeUnit.SECONDS.toNanos(1);
@@ -39,6 +37,9 @@ public class TimeWindowInstanceStats implements InstanceStats {
      */
     private final ServerStats serverStats;
 
+    private volatile int activeCount;
+    private volatile int domainThreads = ManagementFactory.getThreadMXBean().getThreadCount();
+
     // windowMillis = windowSize * timeInterval
     private final long windowSize;
     private final long timeInterval;
@@ -48,7 +49,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
 
     /*
      * 4组分段计数器
-     * key = serviceId, value = counter
+     * key = getServiceId, value = counter
      * totalResponseMs = successesMs + failuresMs
      */
     private final Map<String, SegmentCounter> totalResponseMsCounterMap = new ConcurrentHashMap<>();
@@ -71,103 +72,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
         this.counterFactory = defaultIfNull(counterFactory, DEFAULT_COUNTER_FACTORY);
     }
 
-    public static SnapshotStats fromString(String text) {
-        checkNotEmpty(text, "text");
-
-        String[] groups = text.split(GROUP_SEPARATOR);
-        if (groups.length != 3) {
-            throwIllegalArg();
-        }
-
-        String serviceId = groups[0];
-        String[] insts = groups[1].split(SEPARATOR);
-        if (insts.length != 9) {
-            throwIllegalArg();
-        }
-        String address = insts[0];
-        long startTimeMs = Long.parseLong(insts[1]);
-        long endTimeMs = Long.parseLong(insts[2]);
-        long totalReqs = Long.parseLong(insts[3]);
-        long successes = Long.parseLong(insts[4]);
-        long failures = Long.parseLong(insts[5]);
-        long rejections = Long.parseLong(insts[6]);
-        long avgResponseMs = Long.parseLong(insts[7]);
-        long throughput = Long.parseLong(insts[8]);
-        ServerStats serverStats = new ServerStats(address);
-        RuntimeInfo runInfo = isEmpty(groups[2]) || groups[2].equals("null") ?
-                null : RuntimeInfo.fromString(groups[2]);
-        serverStats.setRuntimeInfo(runInfo);
-
-        return new SnapshotStats() {
-            private static final long serialVersionUID = 6197862269143364929L;
-
-            @Override
-            public String serviceId() {
-                return serviceId;
-            }
-
-            @Override
-            public long startTimeMs() {
-                return startTimeMs;
-            }
-
-            @Override
-            public long endTimeMs() {
-                return endTimeMs;
-            }
-
-            @Override
-            public String getAddress() {
-                return address;
-            }
-
-            @Override
-            public ServerStats getServerStats() {
-                return serverStats;
-            }
-
-            @Override
-            public State evalState() {
-                return null;
-            }
-
-            @Override
-            public long getAvgResponseMs() {
-                return avgResponseMs;
-            }
-
-            @Override
-            public long getThroughput() {
-                return throughput;
-            }
-
-            @Override
-            public long getTotalResponseMs() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public long getNumberOfRequests() {
-                return totalReqs;
-            }
-
-            @Override
-            public long getNumberOfSuccesses() {
-                return successes;
-            }
-
-            @Override
-            public long getNumberOfFailures() {
-                return failures;
-            }
-
-            @Override
-            public long getNumberOfRejections() {
-                return rejections;
-            }
-        };
-    }
-
     public long getWindowSize() {
         return windowSize;
     }
@@ -175,11 +79,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
     public long getTimeIntervalMs(TimeUnit unit) {
         checkNotNull(unit, "unit");
         return unit.convert(timeInterval, timeUnit);
-    }
-
-    @Override
-    public long startTimeMs() {
-        return _startTimeMs(offset());
     }
 
     @Override
@@ -193,13 +92,28 @@ public class TimeWindowInstanceStats implements InstanceStats {
     }
 
     @Override
-    public State evalState() {
-        return null;
+    public Set<String> getServiceIds() {
+        return successesCounterMap.keySet();
     }
 
     @Override
-    public Set<String> getServiceIds() {
-        return successesCounterMap.keySet();
+    public void setDomainThreads(int nThreads) {
+        domainThreads = nThreads;
+    }
+
+    @Override
+    public int getDomainThreads() {
+        return domainThreads;
+    }
+
+    @Override
+    public void setActiveCount(int activeCount) {
+        this.activeCount = activeCount;
+    }
+
+    @Override
+    public int getActiveCount() {
+        return activeCount;
     }
 
     @Override
@@ -212,7 +126,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
     @Override
     public void failure(String serviceId, long responseMs) {
         long offset = offset();
-        // getOrCreate(totalResponseMsCounterMap, serviceId).add(offset, responseMs);
         getOrCreate(failuresCounterMap, serviceId).increment(offset);
     }
 
@@ -346,19 +259,72 @@ public class TimeWindowInstanceStats implements InstanceStats {
     }
 
     @Override
-    public String snapshot(String serviceId) {
+    public SnapshotStats snapshot(String serviceId) {
         long offset = offset();
-        return serviceId + GROUP_SEPARATOR
-               + address + SEPARATOR
-               + _startTimeMs(offset) + SEPARATOR
-               + TimeUnit.MILLISECONDS.convert(offset * timeInterval, timeUnit) + SEPARATOR
-               + _getNumberOfRequests(serviceId, offset) + SEPARATOR
-               + _getNumberOfSuccesses(serviceId, offset) + SEPARATOR
-               + _getNumberOfFailures(serviceId, offset) + SEPARATOR
-               + _getNumberOfRejections(serviceId, offset) + SEPARATOR
-               + _getAvgResponseMs(serviceId, offset) + SEPARATOR
-               + _getThroughput(serviceId, offset)
-               + GROUP_SEPARATOR + serverStats.getRuntimeInfo();
+
+        return new SnapshotStats() {
+            private static final long serialVersionUID = 4730611862768267830L;
+
+            @Override
+            public String getAddress() {
+                return address;
+            }
+
+            @Override
+            public String getServiceId() {
+                return serviceId;
+            }
+
+            @Override
+            public long startTimeMs() {
+                return _startTimeMs(offset);
+            }
+
+            @Override
+            public long endTimeMs() {
+                return TimeUnit.MILLISECONDS.convert(offset * timeInterval, timeUnit);
+            }
+
+            @Override
+            public int getDomainThreads() {
+                return domainThreads;
+            }
+
+            @Override
+            public int getActiveCount() {
+                return activeCount;
+            }
+
+            @Override
+            public ServerStats getServerStats() {
+                return serverStats;
+            }
+
+            @Override
+            public long getAvgResponseMs() {
+                return _getAvgResponseMs(serviceId, offset);
+            }
+
+            @Override
+            public long getThroughput() {
+                return _getThroughput(serviceId, offset);
+            }
+
+            @Override
+            public long getNumberOfSuccesses() {
+                return _getNumberOfSuccesses(serviceId, offset);
+            }
+
+            @Override
+            public long getNumberOfFailures() {
+                return _getNumberOfFailures(serviceId, offset);
+            }
+
+            @Override
+            public long getNumberOfRejections() {
+                return _getNumberOfRejections(serviceId, offset);
+            }
+        };
     }
 
     @Override
@@ -471,10 +437,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
         for (SegmentCounter segmentCounter : counterMap.values()) {
             segmentCounter.clean(toKey);
         }
-    }
-
-    private static void throwIllegalArg() {
-        throw new IllegalArgumentException("text format error, see TimeWindowInstanceStats.snapshot(java.lang.String)");
     }
 
 }

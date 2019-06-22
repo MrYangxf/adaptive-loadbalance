@@ -11,17 +11,8 @@ import java.util.Set;
  */
 public interface InstanceStats extends Serializable {
 
-    enum State {
-        OVERLOAD,
-        UNDERLOAD
-    }
+    SnapshotStats snapshot(String serviceId);
 
-    long startTimeMs();
-    
-    default long endTimeMs() {
-        return System.currentTimeMillis();
-    }
-    
     String getAddress();
 
     /**
@@ -29,12 +20,15 @@ public interface InstanceStats extends Serializable {
      */
     ServerStats getServerStats();
 
-    /**
-     * 评估实例状态
-     */
-    State evalState();
-
     Set<String> getServiceIds();
+
+    void setDomainThreads(int nThreads);
+
+    int getDomainThreads();
+
+    void setActiveCount(int activeCount);
+
+    int getActiveCount();
 
     /**
      * 请求成功
@@ -81,9 +75,9 @@ public interface InstanceStats extends Serializable {
     long getNumberOfRequests(String serviceId);
 
     long getNumberOfSuccesses();
-    
+
     long getNumberOfSuccesses(String serviceId);
-    
+
     long getNumberOfFailures();
 
     long getNumberOfFailures(String serviceId);
@@ -91,6 +85,5 @@ public interface InstanceStats extends Serializable {
     long getNumberOfRejections();
 
     long getNumberOfRejections(String serviceId);
-    
-    String snapshot(String serviceId);
+
 }

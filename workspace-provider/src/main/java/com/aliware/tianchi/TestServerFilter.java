@@ -18,10 +18,11 @@ import java.util.concurrent.ThreadLocalRandom;
 @Activate(group = Constants.PROVIDER)
 public class TestServerFilter implements Filter {
 
+    private static final String START_MILLIS = "START_MILLIS";
+
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        long startMs = System.currentTimeMillis();
-        invocation.getAttachments().put("startTimeMs", String.valueOf(startMs));
+        invocation.getAttachments().put(START_MILLIS, String.valueOf(System.currentTimeMillis()));
         return invoker.invoke(invocation);
     }
 
@@ -29,15 +30,23 @@ public class TestServerFilter implements Filter {
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
         String serviceId = invoker.getInterface().getName() + '#' + invocation.getMethodName();
         InstanceStats stats = NearRuntimeHelper.INSTANCE.getInstanceStats();
-        String att = invocation.getAttachment("startTimeMs");
+        String att = invocation.getAttachment(START_MILLIS);
+
         long startTimeMs = att == null ? System.currentTimeMillis() : Long.parseLong(att);
+        long duration = System.currentTimeMillis() - startTimeMs;
         if (result.hasException()) {
-            stats.failure(serviceId, System.currentTimeMillis() - startTimeMs);
+            stats.failure(serviceId, duration);
         } else {
-            stats.success(serviceId, System.currentTimeMillis() - startTimeMs);
+            stats.success(serviceId, duration);
         }
 
-        result.setAttachment("STATS", stats.snapshot(serviceId));
+        if ((ThreadLocalRandom.current().nextInt() & 0x01010101) == 0) {
+            String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
+            int nThreads = Integer.parseInt(nThreadsString);
+            NearRuntimeHelper.INSTANCE.getInstanceStats().setDomainThreads(nThreads);
+            result.setAttachment("STATS", stats.snapshot(serviceId).toString());
+        }
+
         return result;
     }
 

@@ -1,7 +1,6 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.common.metric.SnapshotStats;
-import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
@@ -19,21 +18,22 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 @Activate(group = Constants.CONSUMER)
 public class TestClientFilter implements Filter {
 
-
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        LBStatistics.increment(invoker.getUrl().getAddress());
+        LBStatistics.INSTANCE.queue(invoker);
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
+        LBStatistics.INSTANCE.dequeue(invoker);
+
         String statsText = result.getAttachment("STATS");
         if (nonEmpty(statsText)) {
-            SnapshotStats snapshotStats = TimeWindowInstanceStats.fromString(statsText);
-            LBStatistics.updateInstanceStats(invoker, invocation, snapshotStats);
+            SnapshotStats snapshotStats = SnapshotStats.fromString(statsText);
+            LBStatistics.INSTANCE.updateInstanceStats(invoker, invocation, snapshotStats);
+
         }
-        LBStatistics.decrement(invoker.getUrl().getAddress());
         return result;
     }
 }

@@ -52,30 +52,20 @@ public class AdaptiveLoadBalance implements LoadBalance {
         }
 
         PriorityQueue<SnapshotStats> queue = LOCAL_Q.get();
+        LBStatistics lbStatistics = LBStatistics.INSTANCE;
 
-        // double totalIdleCpus = 0;
-        // double minIdleCpus = Long.MAX_VALUE;
         double maxIdleCpus = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
-            SnapshotStats stats = LBStatistics.getInstanceStats(invoker, invocation);
+            SnapshotStats stats = lbStatistics.getInstanceStats(invoker, invocation);
             RuntimeInfo runtimeInfo;
             if (isNull(stats) || isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 queue.clear();
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
 
-            long waits = LBStatistics.getWaits(invoker.getUrl().getAddress());
-            // if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
-            //     logger.info(invoker.getUrl().getAddress() +
-            //                 ", waits=" + waits +
-            //                 ", avg=" + stats.getAvgResponseMs() +
-            //                 ", suc=" + stats.getNumberOfSuccesses() +
-            //                 ", fai=" + stats.getNumberOfFailures() +
-            //                 ", tpt=" + stats.getThroughput() +
-            //                 ", run=" + runtimeInfo
-            //                );
-            // }
+            String address = invoker.getUrl().getAddress();
+            long waits = lbStatistics.getWaits(address);
 
             double idleCpus = (1 - runtimeInfo.getProcessCpuLoad()) *
                               runtimeInfo.getAvailableProcessors();
@@ -83,12 +73,21 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 maxIdleCpus = idleCpus;
                 mostIdleIvk = invoker;
             }
-            // if (idleCpus < minIdleCpus) {
-            //     minIdleCpus = idleCpus;
-            // }
-            // totalIdleCpus += idleCpus;
 
-            if (waits > runtimeInfo.getThreadCount() * .8) {
+            if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
+                logger.info(address +
+                            ", waits=" + waits +
+                            ", active=" + stats.getActiveCount() +
+                            ", threads=" + stats.getDomainThreads() +
+                            ", avg=" + stats.getAvgResponseMs() +
+                            ", suc=" + stats.getNumberOfSuccesses() +
+                            ", fai=" + stats.getNumberOfFailures() +
+                            ", tpt=" + stats.getThroughput() +
+                            ", run=" + runtimeInfo
+                           );
+            }
+
+            if (waits > stats.getDomainThreads() * .8) {
                 continue;
             }
 
@@ -96,16 +95,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
             queue.offer(stats);
         }
 
-        // double idleRate = minIdleCpus * invokers.size() / (totalIdleCpus + 0.0001);
-        // if (ThreadLocalRandom.current().nextDouble(1) <= idleRate) {
-        //     queue.clear();
-        //     return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
-        // }
-        //
-        // if (queue.isEmpty()) {
-        //     assert mostIdleIvk != null;
-        //     logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
-        // }
+        if (queue.isEmpty()) {
+            assert mostIdleIvk != null;
+            logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
+        }
 
         int mask = 0x80000000, n = 0;
         for (; ; ) {

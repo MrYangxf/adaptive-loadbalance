@@ -18,7 +18,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class TestRequestLimiter implements RequestLimiter {
 
-    private static final double THRESHOLD = .90d;
+    private static final double THRESHOLD = .95d;
     private final NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
 
     /**
@@ -29,6 +29,7 @@ public class TestRequestLimiter implements RequestLimiter {
      */
     @Override
     public boolean tryAcquire(Request request, int activeTaskCount) {
+        helper.getInstanceStats().setActiveCount(activeTaskCount);
         RuntimeInfo runtimeInfo = helper.getRuntimeInfo();
         if (nonNull(runtimeInfo)) {
             double processCpuLoad = runtimeInfo.getProcessCpuLoad();
@@ -38,7 +39,7 @@ public class TestRequestLimiter implements RequestLimiter {
                 return r > rate;
             }
         }
-        return true;
+        return activeTaskCount < helper.getInstanceStats().getDomainThreads();
     }
 
 }
