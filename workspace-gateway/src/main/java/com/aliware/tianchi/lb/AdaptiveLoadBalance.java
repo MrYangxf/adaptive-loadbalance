@@ -72,14 +72,14 @@ public class AdaptiveLoadBalance implements LoadBalance {
         double maxIdleCpus = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
-            SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, invoker.getUrl().getAddress());
+            String address = invoker.getUrl().getAddress();
+            SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
             RuntimeInfo runtimeInfo;
             if (isNull(stats) || isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 queue.clear();
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
 
-            String address = invoker.getUrl().getAddress();
             long waits = lbStatistics.getWaits(address);
 
             double idleCpus = (1 - runtimeInfo.getProcessCpuLoad()) *
