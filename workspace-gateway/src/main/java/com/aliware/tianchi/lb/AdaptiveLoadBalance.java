@@ -47,6 +47,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
 
+        // todo: config
         if (ThreadLocalRandom.current().nextInt() % invokers.size() == 0) {
             return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
         }
@@ -54,10 +55,14 @@ public class AdaptiveLoadBalance implements LoadBalance {
         PriorityQueue<SnapshotStats> queue = LOCAL_Q.get();
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
 
+        String serviceId = invokers.get(0).getInterface().getName() + '#' +
+                           invocation.getMethodName() +
+                           Arrays.toString(invocation.getParameterTypes());
+
         double maxIdleCpus = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
-            SnapshotStats stats = lbStatistics.getInstanceStats(invoker, invocation);
+            SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, invoker.getUrl().getAddress());
             RuntimeInfo runtimeInfo;
             if (isNull(stats) || isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 queue.clear();
@@ -87,6 +92,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                            );
             }
 
+            // todo: config
             if (waits > stats.getDomainThreads() * .8) {
                 continue;
             }
@@ -100,18 +106,17 @@ public class AdaptiveLoadBalance implements LoadBalance {
             logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
         }
 
-        int mask = 0x80000000, n = 0;
-        for (; ; ) {
+        for (int mask = 1; ; ) {
             SnapshotStats stats = queue.poll();
             if (stats == null) {
                 break;
             }
 
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
-            if (runtimeInfo.getProcessCpuLoad() > 0.8
-                ||
-                (ThreadLocalRandom.current().nextInt() & (n = (n << 1) | mask)) == 0
-                    ) {
+            // todo: config
+            if (runtimeInfo.getProcessCpuLoad() > 0.8 ||
+                (ThreadLocalRandom.current().nextInt() & mask) == 0) {
+                mask = (mask << 1) | mask;
                 continue;
             }
             queue.clear();

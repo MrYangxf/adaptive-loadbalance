@@ -1,5 +1,6 @@
 package com.aliware.tianchi;
 
+import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.remoting.exchange.Request;
@@ -18,6 +19,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class TestRequestLimiter implements RequestLimiter {
 
+    // todo: config
     private static final double THRESHOLD = .95d;
     private final NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
 
@@ -29,17 +31,21 @@ public class TestRequestLimiter implements RequestLimiter {
      */
     @Override
     public boolean tryAcquire(Request request, int activeTaskCount) {
-        helper.getInstanceStats().setActiveCount(activeTaskCount);
-        RuntimeInfo runtimeInfo = helper.getRuntimeInfo();
-        if (nonNull(runtimeInfo)) {
-            double processCpuLoad = runtimeInfo.getProcessCpuLoad();
-            if (processCpuLoad > THRESHOLD) {
-                double rate = processCpuLoad - THRESHOLD;
-                double r = ThreadLocalRandom.current().nextDouble(1);
-                return r > rate;
+        InstanceStats stats = helper.getInstanceStats();
+        if (nonNull(stats)) {
+            stats.setActiveCount(activeTaskCount);
+            RuntimeInfo runtimeInfo = helper.getRuntimeInfo();
+            if (nonNull(runtimeInfo)) {
+                double processCpuLoad = runtimeInfo.getProcessCpuLoad();
+                if (processCpuLoad > THRESHOLD) {
+                    double rate = processCpuLoad - THRESHOLD;
+                    double r = ThreadLocalRandom.current().nextDouble(1);
+                    return r > rate;
+                }
             }
+            return activeTaskCount < stats.getDomainThreads();
         }
-        return activeTaskCount < helper.getInstanceStats().getDomainThreads();
+        return true;
     }
 
 }

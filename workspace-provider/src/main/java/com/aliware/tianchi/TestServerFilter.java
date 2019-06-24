@@ -6,7 +6,7 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.Arrays;
 
 /**
  * @author daofeng.xjf
@@ -28,8 +28,11 @@ public class TestServerFilter implements Filter {
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        String serviceId = invoker.getInterface().getName() + '#' + invocation.getMethodName();
-        InstanceStats stats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+        String serviceId = invoker.getInterface().getName() + '#' + 
+                           invocation.getMethodName() + 
+                           Arrays.toString(invocation.getParameterTypes());
+        
+        InstanceStats stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
         String att = invocation.getAttachment(START_MILLIS);
 
         long startTimeMs = att == null ? System.currentTimeMillis() : Long.parseLong(att);
@@ -39,14 +42,6 @@ public class TestServerFilter implements Filter {
         } else {
             stats.success(serviceId, duration);
         }
-
-        if ((ThreadLocalRandom.current().nextInt() & 0x01010101) == 0) {
-            String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
-            int nThreads = Integer.parseInt(nThreadsString);
-            NearRuntimeHelper.INSTANCE.getInstanceStats().setDomainThreads(nThreads);
-            result.setAttachment("STATS", stats.snapshot(serviceId).toString());
-        }
-
         return result;
     }
 

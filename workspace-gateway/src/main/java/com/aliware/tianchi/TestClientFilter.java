@@ -1,12 +1,9 @@
 package com.aliware.tianchi;
 
-import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
-
-import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
 /**
  * @author daofeng.xjf
@@ -27,13 +24,6 @@ public class TestClientFilter implements Filter {
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
         LBStatistics.INSTANCE.dequeue(invoker);
-
-        String statsText = result.getAttachment("STATS");
-        if (nonEmpty(statsText)) {
-            SnapshotStats snapshotStats = SnapshotStats.fromString(statsText);
-            LBStatistics.INSTANCE.updateInstanceStats(invoker, invocation, snapshotStats);
-
-        }
         return result;
     }
 }
