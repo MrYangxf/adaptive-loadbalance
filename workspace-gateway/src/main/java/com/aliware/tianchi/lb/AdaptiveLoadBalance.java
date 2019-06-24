@@ -100,18 +100,16 @@ public class AdaptiveLoadBalance implements LoadBalance {
             logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
         }
 
-        int mask = 0x80000000, n = 0;
-        for (; ; ) {
+        for (int mask = 1; ; ) {
             SnapshotStats stats = queue.poll();
             if (stats == null) {
                 break;
             }
 
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
-            if (runtimeInfo.getProcessCpuLoad() > 0.8
-                ||
-                (ThreadLocalRandom.current().nextInt() & (n = (n << 1) | mask)) == 0
-                    ) {
+            if (runtimeInfo.getProcessCpuLoad() > 0.8 ||
+                (ThreadLocalRandom.current().nextInt() & mask) == 0) {
+                mask = (mask << 1) | mask;
                 continue;
             }
             queue.clear();
