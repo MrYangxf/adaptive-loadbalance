@@ -79,19 +79,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 mostIdleIvk = invoker;
             }
 
-            if ((ThreadLocalRandom.current().nextInt() & 15) == 0) {
-                logger.info(address +
-                            ", waits=" + waits +
-                            ", active=" + stats.getActiveCount() +
-                            ", threads=" + stats.getDomainThreads() +
-                            ", avg=" + stats.getAvgResponseMs() +
-                            ", suc=" + stats.getNumberOfSuccesses() +
-                            ", fai=" + stats.getNumberOfFailures() +
-                            ", tpt=" + stats.getThroughput() +
-                            ", run=" + runtimeInfo
-                           );
-            }
-
             // todo: config
             if (waits > stats.getDomainThreads() * .8) {
                 continue;

@@ -4,7 +4,10 @@ import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.rpc.listener.CallbackListener;
+
+import java.net.InetSocketAddress;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
@@ -18,16 +21,28 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 public class CallbackListenerImpl implements CallbackListener {
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackListenerImpl.class);
-    
+
     @Override
     public void receiveServerMsg(String msg) {
         if (nonEmpty(msg)) {
             try {
-                SnapshotStats snapshotStats = SnapshotStats.fromString(msg);
-                LBStatistics.INSTANCE.updateInstanceStats(snapshotStats.getServiceId(),
-                                                          snapshotStats.getAddress(),
-                                                          snapshotStats);
-                logger.info("update " + snapshotStats);
+                SnapshotStats stats = SnapshotStats.fromString(msg);
+                String serviceId = stats.getServiceId();
+                String address = stats.getAddress();
+                LBStatistics.INSTANCE.updateInstanceStats(serviceId, address, stats);
+                InetSocketAddress socketAddress = NetUtils.toAddress(address);
+                String hostAddress = socketAddress.getHostName() + ':' + socketAddress.getPort();
+                LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, stats);
+
+                logger.info("UPDATE " + address +
+                            ", active=" + stats.getActiveCount() +
+                            ", threads=" + stats.getDomainThreads() +
+                            ", avg=" + stats.getAvgResponseMs() +
+                            ", suc=" + stats.getNumberOfSuccesses() +
+                            ", fai=" + stats.getNumberOfFailures() +
+                            ", tpt=" + stats.getThroughput() +
+                            ", run=" + stats.getServerStats().getRuntimeInfo()
+                           );
             } catch (Exception e) {
                 // ... 
             }
