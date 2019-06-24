@@ -38,7 +38,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
     private final ServerStats serverStats;
 
     private volatile int activeCount;
-    private volatile int domainThreads = ManagementFactory.getThreadMXBean().getThreadCount();
+    private volatile int domainThreads;
 
     // windowMillis = windowSize * timeInterval
     private final long windowSize;

@@ -13,6 +13,7 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -43,12 +44,20 @@ public class AdaptiveLoadBalance implements LoadBalance {
     private static final ThreadLocal<PriorityQueue<SnapshotStats>>
             LOCAL_Q = ThreadLocal.withInitial(() -> new PriorityQueue<>(CMP));
 
+    private final AtomicBoolean lock = new AtomicBoolean();
+    
+    private volatile double threshold;
+
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
 
         // todo: config
-        if (ThreadLocalRandom.current().nextInt() % invokers.size() == 0) {
+        // if (ThreadLocalRandom.current().nextInt() % invokers.size() == 0) {
+        //     return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
+        // }
+        if (lock.get() &&
+            ThreadLocalRandom.current().nextDouble(1) < threshold) {
             return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
         }
 
@@ -59,6 +68,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                            invocation.getMethodName() +
                            Arrays.toString(invocation.getParameterTypes());
 
+        int totalThreads = 0, minThreads = Integer.MAX_VALUE;
         double maxIdleCpus = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
@@ -79,13 +89,27 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 mostIdleIvk = invoker;
             }
 
+            int threads = stats.getDomainThreads();
+
+            if (!lock.get()) {
+                totalThreads += threads;
+                if (threads < minThreads) {
+                    minThreads = threads;
+                }
+            }
+
             // todo: config
-            if (waits > stats.getDomainThreads() * .8) {
+            if (waits > threads * .8) {
                 continue;
             }
 
             mapping.put(stats, invoker);
             queue.offer(stats);
+        }
+
+        if (lock.compareAndSet(false, true)) {
+            threshold = minThreads * invokers.size() / (double) totalThreads;
+            logger.info("Random threshold = " + threshold);
         }
 
         if (queue.isEmpty()) {
