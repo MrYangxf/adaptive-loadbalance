@@ -76,7 +76,7 @@ public class NearRuntimeHelper {
         // todo: config
         return new TimeWindowInstanceStats(address,
                                            new ServerStats(address),
-                                           10, 200, TimeUnit.MILLISECONDS,
+                                           10, 100, TimeUnit.MILLISECONDS,
                                            null);
     }
 }
