@@ -15,6 +15,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.defaultIfNull;
 
 /**
+ * todo: 有些小bug，暂不影响本次比赛，有时间修复
  * 基于时间窗口的统计信息
  *
  * @author yangxf

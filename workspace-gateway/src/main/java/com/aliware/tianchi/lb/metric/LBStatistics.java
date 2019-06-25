@@ -50,13 +50,13 @@ public class LBStatistics {
         getInstanceStatsMap(serviceId).put(address, snapshotStats);
     }
 
-    public void queue(Invoker<?> invoker) {
-        waitCounterMap.computeIfAbsent(invoker.getUrl().getAddress(), k -> new LongAdder())
+    public void queue(String address) {
+        waitCounterMap.computeIfAbsent(address, k -> new LongAdder())
                       .increment();
     }
 
-    public void dequeue(Invoker<?> invoker) {
-        waitCounterMap.computeIfAbsent(invoker.getUrl().getAddress(), k -> new LongAdder())
+    public void dequeue(String address) {
+        waitCounterMap.computeIfAbsent(address, k -> new LongAdder())
                       .decrement();
     }
 

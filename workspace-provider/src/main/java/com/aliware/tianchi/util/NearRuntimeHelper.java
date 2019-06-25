@@ -10,7 +10,6 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -34,23 +33,18 @@ public class NearRuntimeHelper {
             AtomicReferenceFieldUpdater.newUpdater(NearRuntimeHelper.class, InstanceStats.class, "stats");
 
     private NearRuntimeHelper() {
-        Executors.newSingleThreadScheduledExecutor()
-                 .scheduleWithFixedDelay(
-                         () -> {
-                             synchronized (buf) {
-                                 buf.addFirst(new RuntimeInfo());
-                                 RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
-                                 stats.getServerStats().setRuntimeInfo(info);
-                                 logger.info("update " + info);
-                                 if (buf.size() >= bufSize) {
-                                     buf.pollLast();
-                                 }
-                             }
-                         },
-                         // todo: config
-                         500,
-                         500,
-                         TimeUnit.MILLISECONDS);
+    }
+
+    public void updateRuntimeInfo() {
+        synchronized (buf) {
+            buf.addFirst(new RuntimeInfo());
+            RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
+            stats.getServerStats().setRuntimeInfo(info);
+            logger.info("update " + info);
+            if (buf.size() >= bufSize) {
+                buf.pollLast();
+            }
+        }
     }
 
     public RuntimeInfo getRuntimeInfo() {
@@ -60,7 +54,7 @@ public class NearRuntimeHelper {
     public InstanceStats getInstanceStats() {
         return stats;
     }
-    
+
     public InstanceStats getOrCreateInstanceStats(Invoker<?> invoker) {
         InstanceStats newStats = newStats(invoker.getUrl().getAddress());
         if (STATS_U.compareAndSet(this, null, newStats)) {

@@ -3,6 +3,8 @@ package com.aliware.tianchi;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.util.NearRuntimeHelper;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
@@ -23,24 +25,33 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class CallbackServiceImpl implements CallbackService {
 
+    private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
+    
     public CallbackServiceImpl() {
         Executors.newSingleThreadScheduledExecutor()
                  .scheduleWithFixedDelay(() -> {
-                     if (!listeners.isEmpty()) {
+                     try {
+                         // update runtime info
+                         NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
+
+                         // notify 
                          for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                              try {
                                  InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
                                  if (nonNull(instanceStats)) {
+                                     CallbackListener listener = entry.getValue();
                                      Set<String> serviceIds = instanceStats.getServiceIds();
                                      for (String serviceId : serviceIds) {
                                          SnapshotStats snapshot = instanceStats.snapshot(serviceId);
-                                         entry.getValue().receiveServerMsg(snapshot.toString());
+                                         listener.receiveServerMsg(snapshot.toString());
                                      }
                                  }
                              } catch (Throwable t) {
-                                 // listeners.remove(entry.getKey());
+                                 logger.error("send error", t);
                              }
                          }
+                     } catch (Throwable throwable) {
+                         logger.error("schedule error", throwable);
                      }
                      // todo: config
                  }, 500, 500, TimeUnit.MILLISECONDS);
@@ -55,6 +66,5 @@ public class CallbackServiceImpl implements CallbackService {
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
-        // listener.receiveServerMsg(helper.getRuntimeInfo().toString()); // send notification for change
     }
 }

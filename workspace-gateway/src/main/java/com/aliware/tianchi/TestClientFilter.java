@@ -17,13 +17,13 @@ public class TestClientFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        LBStatistics.INSTANCE.queue(invoker);
+        LBStatistics.INSTANCE.queue(invoker.getUrl().getAddress());
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        LBStatistics.INSTANCE.dequeue(invoker);
+        LBStatistics.INSTANCE.dequeue(invoker.getUrl().getAddress());
         return result;
     }
 }

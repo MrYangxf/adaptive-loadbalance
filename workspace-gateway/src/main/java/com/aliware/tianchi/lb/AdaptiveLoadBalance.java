@@ -75,7 +75,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
             String address = invoker.getUrl().getAddress();
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
             RuntimeInfo runtimeInfo;
-            if (isNull(stats) || isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
+            if (isNull(stats) || 
+                isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 queue.clear();
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
             }
@@ -117,7 +118,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
         }
 
-        for (int mask = 1; ; ) {
+        for (int n = 0x80000001, mask = 0x80000001; ; ) {
             SnapshotStats stats = queue.poll();
             if (stats == null) {
                 break;
@@ -126,8 +127,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
             // todo: config
             if (runtimeInfo.getProcessCpuLoad() > 0.8 ||
-                (ThreadLocalRandom.current().nextInt() & mask) == 0) {
-                mask = (mask << 1) | mask;
+                (ThreadLocalRandom.current().nextInt() & n) == 0) {
+                n = (n << 1) | mask;
                 continue;
             }
             queue.clear();
@@ -137,4 +138,5 @@ public class AdaptiveLoadBalance implements LoadBalance {
         queue.clear();
         return mostIdleIvk;
     }
+
 }

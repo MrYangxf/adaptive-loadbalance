@@ -32,9 +32,13 @@ public class CallbackListenerImpl implements CallbackListener {
                 LBStatistics.INSTANCE.updateInstanceStats(serviceId, address, stats);
                 InetSocketAddress socketAddress = NetUtils.toAddress(address);
                 String hostAddress = socketAddress.getHostName() + ':' + socketAddress.getPort();
-                LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, stats);
+                boolean alias = !address.equals(hostAddress);
+                if (alias) {
+                    LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, stats);
+                }
 
                 logger.info("UPDATE " + address +
+                            (alias ? ", " + hostAddress : "") +
                             ", active=" + stats.getActiveCount() +
                             ", threads=" + stats.getDomainThreads() +
                             ", avg=" + stats.getAvgResponseMs() +
@@ -45,6 +49,7 @@ public class CallbackListenerImpl implements CallbackListener {
                            );
             } catch (Exception e) {
                 // ... 
+                logger.error("update error", e);
             }
         }
     }
