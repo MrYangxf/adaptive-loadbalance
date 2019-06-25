@@ -13,7 +13,6 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -44,22 +43,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
     private static final ThreadLocal<PriorityQueue<SnapshotStats>>
             LOCAL_Q = ThreadLocal.withInitial(() -> new PriorityQueue<>(CMP));
 
-    private final AtomicBoolean lock = new AtomicBoolean();
-    
-    private volatile double threshold;
-
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
-
-        // todo: config
-        // if (ThreadLocalRandom.current().nextInt() % invokers.size() == 0) {
-        //     return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
-        // }
-        if (lock.get() &&
-            ThreadLocalRandom.current().nextDouble(1) < threshold) {
-            return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
-        }
 
         PriorityQueue<SnapshotStats> queue = LOCAL_Q.get();
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
@@ -68,7 +54,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
                            invocation.getMethodName() +
                            Arrays.toString(invocation.getParameterTypes());
 
-        int totalThreads = 0, minThreads = Integer.MAX_VALUE;
         double maxIdleCpus = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
@@ -91,14 +76,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             int threads = stats.getDomainThreads();
-
-            if (!lock.get()) {
-                totalThreads += threads;
-                if (threads < minThreads) {
-                    minThreads = threads;
-                }
-            }
-
+            
             // todo: config
             if (waits > threads * .8) {
                 continue;
@@ -108,17 +86,12 @@ public class AdaptiveLoadBalance implements LoadBalance {
             queue.offer(stats);
         }
 
-        if (lock.compareAndSet(false, true)) {
-            threshold = minThreads * invokers.size() / (double) totalThreads;
-            logger.info("Random threshold = " + threshold);
-        }
-
         if (queue.isEmpty()) {
             assert mostIdleIvk != null;
             logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
         }
 
-        for (int n = 0x80000001, mask = 0x80000001; ; ) {
+        for (int mask = 1; ; ) {
             SnapshotStats stats = queue.poll();
             if (stats == null) {
                 break;
@@ -127,8 +100,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
             // todo: config
             if (runtimeInfo.getProcessCpuLoad() > 0.8 ||
-                (ThreadLocalRandom.current().nextInt() & n) == 0) {
-                n = (n << 1) | mask;
+                (ThreadLocalRandom.current().nextInt() & mask) == 0) {
+                mask = (mask << 1) | mask;
                 continue;
             }
             queue.clear();
