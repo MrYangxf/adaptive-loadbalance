@@ -2,6 +2,7 @@ package com.aliware.tianchi.lb;
 
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.RuntimeInfo;
+import com.aliware.tianchi.common.util.SmallPriorityQueue;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -40,14 +41,14 @@ public class AdaptiveLoadBalance implements LoadBalance {
         return (int) (a1 - a2);
     };
 
-    private static final ThreadLocal<PriorityQueue<SnapshotStats>>
-            LOCAL_Q = ThreadLocal.withInitial(() -> new PriorityQueue<>(CMP));
+    private static final ThreadLocal<Queue<SnapshotStats>>
+            LOCAL_Q = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, CMP));
 
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
 
-        PriorityQueue<SnapshotStats> queue = LOCAL_Q.get();
+        Queue<SnapshotStats> queue = LOCAL_Q.get();
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
 
         String serviceId = invokers.get(0).getInterface().getName() + '#' +
@@ -60,7 +61,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             String address = invoker.getUrl().getAddress();
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
             RuntimeInfo runtimeInfo;
-            if (isNull(stats) || 
+            if (isNull(stats) ||
                 isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 queue.clear();
                 return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
@@ -76,9 +77,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             int threads = stats.getDomainThreads();
-            
+
             // todo: config
-            if (waits > threads * .8) {
+            if (waits > threads * .85) {
                 continue;
             }
 
@@ -99,7 +100,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
             // todo: config
-            if (runtimeInfo.getProcessCpuLoad() > 0.8 ||
+            if (runtimeInfo.getProcessCpuLoad() > .8 ||
                 (ThreadLocalRandom.current().nextInt() & mask) == 0) {
                 mask = (mask << 1) | mask;
                 continue;
