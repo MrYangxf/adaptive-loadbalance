@@ -25,11 +25,15 @@ import static com.aliware.tianchi.common.util.ObjectUtil.*;
 public class AdaptiveLoadBalance implements LoadBalance {
     private static final Logger logger = LoggerFactory.getLogger(AdaptiveLoadBalance.class);
 
+    private static final int HEAP_THRESHOLD = 8;
+
     private Configuration conf;
 
     private Comparator<SnapshotStats> comparator;
 
-    private final ThreadLocal<Queue<SnapshotStats>> localQ;
+    private final ThreadLocal<Queue<SnapshotStats>> localSmallQ;
+
+    private final ThreadLocal<Queue<SnapshotStats>> localHeapQ;
 
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
@@ -53,15 +57,17 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
             return (int) (a1 - a2);
         };
-        localQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, comparator));
+        localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
+        localHeapQ = ThreadLocal.withInitial(() -> new PriorityQueue<>(comparator));
     }
-    
+
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
+        LBStatistics lbStatistics = LBStatistics.INSTANCE;
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
 
-        Queue<SnapshotStats> queue = localQ.get();
-        LBStatistics lbStatistics = LBStatistics.INSTANCE;
+        int size = invokers.size();
+        Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ? localHeapQ.get() : localSmallQ.get();
 
         String serviceId = invokers.get(0).getInterface().getName() + '#' +
                            invocation.getMethodName() +
@@ -76,7 +82,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             if (isNull(stats) ||
                 isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 queue.clear();
-                return invokers.get(ThreadLocalRandom.current().nextInt(invokers.size()));
+                return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
 
             long waits = lbStatistics.getWaits(address);

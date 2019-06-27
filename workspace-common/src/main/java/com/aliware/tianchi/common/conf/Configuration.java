@@ -32,7 +32,7 @@ public class Configuration implements Serializable {
      */
     private long windowSizeOfStats = 10;
 
-    private long timeIntervalOfStats = 100;
+    private long timeIntervalOfStats = 50;
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
