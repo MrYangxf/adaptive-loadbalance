@@ -16,8 +16,8 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static com.aliware.tianchi.common.util.MathUtil.isApproximate;
-import static com.aliware.tianchi.common.util.ObjectUtil.*;
+import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 
 /**
  * @author yangxf
@@ -29,8 +29,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
     private Configuration conf;
 
-    private Comparator<SnapshotStats> comparator;
-
     private final ThreadLocal<Queue<SnapshotStats>> localSmallQ;
 
     private final ThreadLocal<Queue<SnapshotStats>> localHeapQ;
@@ -38,25 +36,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
         this.conf = conf;
-        int avgRTMsErrorRange = conf.getAvgRTMsErrorRange();
-        comparator = (o1, o2) -> {
-            long a1 = o1.getAvgResponseMs(),
-                    a2 = o2.getAvgResponseMs();
-
-            if (isApproximate(a1, a2, avgRTMsErrorRange)) {
-                int idles1 = o1.getDomainThreads() - o1.getActiveCount(),
-                        idles2 = o2.getDomainThreads() - o2.getActiveCount();
-                RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
-                        r2 = o2.getServerStats().getRuntimeInfo();
-                if (nonNull(r1) && nonNull(r2)) {
-                    idles1 /= r1.getAvailableProcessors();
-                    idles2 /= r2.getAvailableProcessors();
-                }
-                return idles2 - idles1;
-            }
-
-            return (int) (a1 - a2);
-        };
+        Comparator<SnapshotStats> comparator = conf.getStatsComparator();
         localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
         localHeapQ = ThreadLocal.withInitial(() -> new PriorityQueue<>(comparator));
     }
