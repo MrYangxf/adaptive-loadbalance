@@ -1,5 +1,6 @@
 package com.aliware.tianchi;
 
+import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.util.NearRuntimeHelper;
@@ -28,35 +29,12 @@ public class CallbackServiceImpl implements CallbackService {
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
     public CallbackServiceImpl() {
+        Configuration conf = NearRuntimeHelper.INSTANCE.getConfiguration();
         Executors.newSingleThreadScheduledExecutor()
-                 .scheduleWithFixedDelay(() -> {
-                     try {
-                         // update runtime info
-                         NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
-
-                         // notify 
-                         for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
-                             try {
-                                 InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
-                                 if (nonNull(instanceStats)) {
-                                     CallbackListener listener = entry.getValue();
-                                     Set<String> serviceIds = instanceStats.getServiceIds();
-                                     for (String serviceId : serviceIds) {
-                                         SnapshotStats snapshot = instanceStats.snapshot(serviceId);
-                                         listener.receiveServerMsg(snapshot.toString());
-                                     }
-                                 }
-                             } catch (Throwable t) {
-                                 logger.error("send error", t);
-                             }
-                         }
-                         
-                         NearRuntimeHelper.INSTANCE.cleanStats();
-                     } catch (Throwable throwable) {
-                         logger.error("schedule error", throwable);
-                     }
-                     // todo: config
-                 }, 500, 500, TimeUnit.MILLISECONDS);
+                 .scheduleWithFixedDelay(new PushTask(),
+                                         conf.getStatsPushInitDelayMs(),
+                                         conf.getStatsPushDelayMs(),
+                                         TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -68,5 +46,37 @@ public class CallbackServiceImpl implements CallbackService {
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
+    }
+
+    class PushTask implements Runnable {
+
+        @Override
+        public void run() {
+            try {
+                // update runtime info
+                NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
+
+                // notify 
+                for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+                    try {
+                        InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+                        if (nonNull(instanceStats)) {
+                            CallbackListener listener = entry.getValue();
+                            Set<String> serviceIds = instanceStats.getServiceIds();
+                            for (String serviceId : serviceIds) {
+                                SnapshotStats snapshot = instanceStats.snapshot(serviceId);
+                                listener.receiveServerMsg(snapshot.toString());
+                            }
+                        }
+                    } catch (Throwable t) {
+                        logger.error("send error", t);
+                    }
+                }
+
+                NearRuntimeHelper.INSTANCE.cleanStats();
+            } catch (Throwable throwable) {
+                logger.error("schedule error", throwable);
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 package com.aliware.tianchi.lb;
 
+import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SmallPriorityQueue;
@@ -15,8 +16,8 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
-import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
+import static com.aliware.tianchi.common.util.MathUtil.isApproximate;
+import static com.aliware.tianchi.common.util.ObjectUtil.*;
 
 /**
  * @author yangxf
@@ -24,40 +25,42 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 public class AdaptiveLoadBalance implements LoadBalance {
     private static final Logger logger = LoggerFactory.getLogger(AdaptiveLoadBalance.class);
 
-    private static Comparator<SnapshotStats> CMP = (o1, o2) -> {
-        long a1 = o1.getAvgResponseMs(),
-                a2 = o2.getAvgResponseMs();
+    private Configuration conf;
 
-        if (a1 == a2) {
-            RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
-                    r2 = o2.getServerStats().getRuntimeInfo();
-            if (nonNull(r1) && nonNull(r2)) {
-                double d = (1 - r1.getProcessCpuLoad()) * r1.getAvailableProcessors() -
-                           (1 - r2.getProcessCpuLoad()) * r2.getAvailableProcessors();
-                return d > 0 ? -1 : d < 0 ? 1 : 0;
+    private Comparator<SnapshotStats> comparator;
+
+    private final ThreadLocal<Queue<SnapshotStats>> localQ;
+
+    public AdaptiveLoadBalance(Configuration conf) {
+        checkNotNull(conf, "conf");
+        this.conf = conf;
+        int avgRTMsErrorRange = conf.getAvgRTMsErrorRange();
+        comparator = (o1, o2) -> {
+            long a1 = o1.getAvgResponseMs(),
+                    a2 = o2.getAvgResponseMs();
+
+            if (isApproximate(a1, a2, avgRTMsErrorRange)) {
+                int idles1 = o1.getDomainThreads() - o1.getActiveCount(),
+                        idles2 = o2.getDomainThreads() - o2.getActiveCount();
+                RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
+                        r2 = o2.getServerStats().getRuntimeInfo();
+                if (nonNull(r1) && nonNull(r2)) {
+                    idles1 /= r1.getAvailableProcessors();
+                    idles2 /= r2.getAvailableProcessors();
+                }
+                return idles2 - idles1;
             }
-        }
 
-        if (isNear(a1, a2, 3)) {
-            return (o2.getDomainThreads() - o2.getActiveCount()) -
-                   (o1.getDomainThreads() - o1.getActiveCount());
-        }
-
-        return (int) (a1 - a2);
-    };
-
-    private static boolean isNear(long left, long right, int n) {
-        return left <= right + n && right <= left + n;
+            return (int) (a1 - a2);
+        };
+        localQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, comparator));
     }
-
-    private static final ThreadLocal<Queue<SnapshotStats>>
-            LOCAL_Q = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, CMP));
-
+    
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
 
-        Queue<SnapshotStats> queue = LOCAL_Q.get();
+        Queue<SnapshotStats> queue = localQ.get();
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
 
         String serviceId = invokers.get(0).getInterface().getName() + '#' +
@@ -87,8 +90,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
             int threads = stats.getDomainThreads();
 
-            // todo: config
-            if (waits > threads * .8) {
+            if (waits > threads * conf.getMaxRateOfWaitingRequests()) {
                 continue;
             }
 
@@ -108,8 +110,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
-            // todo: config
-            if (runtimeInfo.getProcessCpuLoad() > .8 ||
+            if (runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad() ||
                 (ThreadLocalRandom.current().nextInt() & mask) == 0) {
                 mask = (mask << 1) | mask;
                 continue;

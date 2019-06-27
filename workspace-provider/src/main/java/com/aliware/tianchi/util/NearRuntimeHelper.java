@@ -1,5 +1,6 @@
 package com.aliware.tianchi.util;
 
+import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.ServerStats;
 import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
@@ -10,9 +11,9 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
@@ -22,19 +23,20 @@ public class NearRuntimeHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(NearRuntimeHelper.class);
 
-    public static final NearRuntimeHelper INSTANCE = new NearRuntimeHelper();
+    public static final NearRuntimeHelper INSTANCE = new NearRuntimeHelper(new Configuration());
 
-    // todo: config
-    private int bufSize = 5;
+    private Configuration conf;
 
     private final LinkedList<RuntimeInfo> buf = new LinkedList<>();
 
-    private volatile InstanceStats stats;
+    private volatile InstanceStats stats = null;
 
     private static final AtomicReferenceFieldUpdater<NearRuntimeHelper, InstanceStats> STATS_U =
             AtomicReferenceFieldUpdater.newUpdater(NearRuntimeHelper.class, InstanceStats.class, "stats");
 
-    private NearRuntimeHelper() {
+    public NearRuntimeHelper(Configuration conf) {
+        checkNotNull(conf);
+        this.conf = conf;
     }
 
     public void updateRuntimeInfo() {
@@ -45,7 +47,7 @@ public class NearRuntimeHelper {
                 stats.getServerStats().setRuntimeInfo(info);
             }
             logger.info("update " + info);
-            if (buf.size() >= bufSize) {
+            if (buf.size() >= conf.getRuntimeInfoQueueSize()) {
                 buf.pollLast();
             }
         }
@@ -69,18 +71,23 @@ public class NearRuntimeHelper {
         }
         return STATS_U.get(this);
     }
-    
+
     public void cleanStats() {
         if (nonNull(stats)) {
             stats.clean();
         }
     }
+    
+    public Configuration getConfiguration() {
+        return conf;
+    }
 
     private InstanceStats newStats(String address) {
-        // todo: config
         return new TimeWindowInstanceStats(address,
                                            new ServerStats(address),
-                                           10, 80, TimeUnit.MILLISECONDS,
-                                           null);
+                                           conf.getWindowSizeOfStats(),
+                                           conf.getTimeIntervalOfStats(),
+                                           conf.getTimeUnitOfStats(),
+                                           conf.getCounterFactory());
     }
 }

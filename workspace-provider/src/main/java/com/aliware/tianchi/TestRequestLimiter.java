@@ -19,7 +19,6 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class TestRequestLimiter implements RequestLimiter {
 
-    // todo: config
     private static final double THRESHOLD = .95d;
     private final NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
 
