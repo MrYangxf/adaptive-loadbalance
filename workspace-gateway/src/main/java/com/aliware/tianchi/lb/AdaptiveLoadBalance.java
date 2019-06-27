@@ -38,8 +38,17 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
         }
 
+        if (isNear(a1, a2, 3)) {
+            return (o2.getDomainThreads() - o2.getActiveCount()) -
+                   (o1.getDomainThreads() - o1.getActiveCount());
+        }
+
         return (int) (a1 - a2);
     };
+
+    private static boolean isNear(long left, long right, int n) {
+        return left <= right + n && right <= left + n;
+    }
 
     private static final ThreadLocal<Queue<SnapshotStats>>
             LOCAL_Q = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, CMP));
@@ -79,7 +88,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             int threads = stats.getDomainThreads();
 
             // todo: config
-            if (waits > threads * .85) {
+            if (waits > threads * .8) {
                 continue;
             }
 
@@ -112,5 +121,4 @@ public class AdaptiveLoadBalance implements LoadBalance {
         queue.clear();
         return mostIdleIvk;
     }
-
 }

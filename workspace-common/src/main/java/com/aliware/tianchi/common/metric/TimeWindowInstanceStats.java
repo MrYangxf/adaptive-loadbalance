@@ -358,13 +358,13 @@ public class TimeWindowInstanceStats implements InstanceStats {
     private long _getThroughput(long high) {
         long low = high - windowSize;
         return sumMap(successesCounterMap, low, high) /
-               TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit);
+               (TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit) + 1);
     }
 
     private long _getThroughput(String serviceId, long high) {
         long low = high - windowSize;
         return getOrCreate(successesCounterMap, serviceId).sum(low, high) /
-               TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit);
+               (TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit) + 1);
     }
 
     private long _getTotalResponseMs(long high) {

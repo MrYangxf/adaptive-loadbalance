@@ -26,7 +26,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 public class CallbackServiceImpl implements CallbackService {
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
-    
+
     public CallbackServiceImpl() {
         Executors.newSingleThreadScheduledExecutor()
                  .scheduleWithFixedDelay(() -> {
@@ -50,6 +50,8 @@ public class CallbackServiceImpl implements CallbackService {
                                  logger.error("send error", t);
                              }
                          }
+                         
+                         NearRuntimeHelper.INSTANCE.cleanStats();
                      } catch (Throwable throwable) {
                          logger.error("schedule error", throwable);
                      }

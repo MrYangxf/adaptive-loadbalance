@@ -13,6 +13,8 @@ import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
+
 /**
  * @author yangxf
  */
@@ -39,7 +41,9 @@ public class NearRuntimeHelper {
         synchronized (buf) {
             buf.addFirst(new RuntimeInfo());
             RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
-            stats.getServerStats().setRuntimeInfo(info);
+            if (nonNull(stats)) {
+                stats.getServerStats().setRuntimeInfo(info);
+            }
             logger.info("update " + info);
             if (buf.size() >= bufSize) {
                 buf.pollLast();
@@ -65,12 +69,18 @@ public class NearRuntimeHelper {
         }
         return STATS_U.get(this);
     }
+    
+    public void cleanStats() {
+        if (nonNull(stats)) {
+            stats.clean();
+        }
+    }
 
     private InstanceStats newStats(String address) {
         // todo: config
         return new TimeWindowInstanceStats(address,
                                            new ServerStats(address),
-                                           10, 100, TimeUnit.MILLISECONDS,
+                                           10, 80, TimeUnit.MILLISECONDS,
                                            null);
     }
 }
