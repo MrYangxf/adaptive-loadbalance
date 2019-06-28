@@ -76,7 +76,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
             int threads = stats.getDomainThreads();
 
-            if (waits > threads * conf.getMaxRateOfWaitingRequests()) {
+            if (waits > threads * conf.getMaxRateOfWaitingRequests() ||
+                runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
                 continue;
             }
 
@@ -87,6 +88,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
         if (queue.isEmpty()) {
             assert mostIdleIvk != null;
             logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
+            // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
         }
 
         for (int mask = 1; ; ) {
@@ -95,9 +97,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 break;
             }
 
-            RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
-            if (runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad() ||
-                (ThreadLocalRandom.current().nextInt() & mask) == 0) {
+            if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
                 mask = (mask << 1) | mask;
                 continue;
             }

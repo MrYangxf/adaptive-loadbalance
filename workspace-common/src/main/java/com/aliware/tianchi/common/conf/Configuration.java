@@ -4,6 +4,7 @@ import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.RingCounter;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SegmentCounterFactory;
+import com.aliware.tianchi.common.util.SkipListCounter;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -17,6 +18,11 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class Configuration implements Serializable {
     private static final long serialVersionUID = -420784964533522751L;
+    
+    /**
+     * 平均响应时间误差范围ms
+     */
+    private static final int ERROR_RANGE = 0;
     
     /**
      * 请求数占生产者线程池的最大比例 0~1
@@ -142,11 +148,6 @@ public class Configuration implements Serializable {
         this.statsPushDelayMs = statsPushDelayMs;
         return this;
     }
-
-    /**
-     * 平均响应时间误差范围ms
-     */
-    private static final int ERROR_RANGE = 1;
 
     public static final Comparator<SnapshotStats> LOAD_FIRST = (o1, o2) -> {
         long a1 = o1.getAvgResponseMs(),
