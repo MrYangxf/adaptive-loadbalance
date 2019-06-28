@@ -53,7 +53,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
                            invocation.getMethodName() +
                            Arrays.toString(invocation.getParameterTypes());
 
-        double maxIdleCpus = Long.MIN_VALUE;
+        // double maxIdleCpus = Long.MIN_VALUE;
+        long maxIdleThreads = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
             String address = invoker.getUrl().getAddress();
@@ -65,17 +66,22 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
 
+            // double idleCpus = (1 - runtimeInfo.getProcessCpuLoad()) *
+            //                   runtimeInfo.getAvailableProcessors();
+            // if (idleCpus > maxIdleCpus) {
+            //     maxIdleCpus = idleCpus;
+            //     mostIdleIvk = invoker;
+            // }
+
             long waits = lbStatistics.getWaits(address);
-
-            double idleCpus = (1 - runtimeInfo.getProcessCpuLoad()) *
-                              runtimeInfo.getAvailableProcessors();
-            if (idleCpus > maxIdleCpus) {
-                maxIdleCpus = idleCpus;
-                mostIdleIvk = invoker;
-            }
-
             int threads = stats.getDomainThreads();
 
+            long idleThreads = threads - waits;
+            if (idleThreads > maxIdleThreads) {
+                maxIdleThreads = idleThreads;
+                mostIdleIvk = invoker;
+            }
+            
             if (waits > threads * conf.getMaxRateOfWaitingRequests() ||
                 runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
                 continue;
@@ -87,7 +93,18 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
         if (queue.isEmpty()) {
             assert mostIdleIvk != null;
-            logger.info("queue is empty, mostIdleIvk" + mostIdleIvk.getUrl().getAddress());
+            String address = mostIdleIvk.getUrl().getAddress();
+            SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
+            logger.info("queue is empty, mostIdleIvk " + address +
+                        ", waits=" + lbStatistics.getWaits(address) +
+                        ", active=" + stats.getActiveCount() +
+                        ", threads=" + stats.getDomainThreads() +
+                        ", avg=" + stats.getAvgResponseMs() +
+                        ", suc=" + stats.getNumberOfSuccesses() +
+                        ", fai=" + stats.getNumberOfFailures() +
+                        ", tpt=" + stats.getThroughput() +
+                        ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad()
+                       );
             // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
         }
 
@@ -105,7 +122,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
             return mapping.get(stats);
         }
 
-        queue.clear();
         return mostIdleIvk;
     }
 }

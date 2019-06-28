@@ -11,7 +11,6 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -29,10 +28,7 @@ public class NearRuntimeHelper {
 
     private final LinkedList<RuntimeInfo> buf = new LinkedList<>();
 
-    private volatile InstanceStats stats = null;
-
-    private static final AtomicReferenceFieldUpdater<NearRuntimeHelper, InstanceStats> STATS_U =
-            AtomicReferenceFieldUpdater.newUpdater(NearRuntimeHelper.class, InstanceStats.class, "stats");
+    private volatile InstanceStats stats;
 
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
@@ -45,8 +41,8 @@ public class NearRuntimeHelper {
             RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
             if (nonNull(stats)) {
                 stats.getServerStats().setRuntimeInfo(info);
+                logger.info("update " + info);
             }
-            logger.info("update " + info);
             if (buf.size() >= conf.getRuntimeInfoQueueSize()) {
                 buf.pollLast();
             }
@@ -62,14 +58,18 @@ public class NearRuntimeHelper {
     }
 
     public InstanceStats getOrCreateInstanceStats(Invoker<?> invoker) {
-        InstanceStats newStats = newStats(invoker.getUrl().getAddress());
-        if (STATS_U.compareAndSet(this, null, newStats)) {
-            String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
-            int nThreads = Integer.parseInt(nThreadsString);
-            newStats.setDomainThreads(nThreads);
-            return newStats;
+        if (stats == null) {
+            synchronized (this) {
+                if (stats == null) {
+                    InstanceStats newStats = newStats(invoker.getUrl().getAddress());
+                    String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
+                    int nThreads = Integer.parseInt(nThreadsString);
+                    newStats.setDomainThreads(nThreads);
+                    stats = newStats;
+                }
+            }
         }
-        return STATS_U.get(this);
+        return stats;
     }
 
     public void cleanStats() {
@@ -77,7 +77,7 @@ public class NearRuntimeHelper {
             stats.clean();
         }
     }
-    
+
     public Configuration getConfiguration() {
         return conf;
     }
