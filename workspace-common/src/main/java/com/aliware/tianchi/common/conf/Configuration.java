@@ -45,7 +45,7 @@ public class Configuration implements Serializable {
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
-    private SegmentCounterFactory counterFactory = () -> new RingCounter(1024);
+    private SegmentCounterFactory counterFactory = () -> new SkipListCounter();
 
     /**
      * 进程运行时信息统计队列大小
