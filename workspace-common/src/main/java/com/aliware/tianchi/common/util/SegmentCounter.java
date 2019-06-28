@@ -29,7 +29,9 @@ public interface SegmentCounter {
     /**
      * Clean startOffset to toOffset(exclusive).
      */
-    void clean(long toOffset);
+    default void clean(long toOffset) {
+        clean(toOffset, false);
+    }
 
     void clean(long toOffset, boolean toInclusive);
 }

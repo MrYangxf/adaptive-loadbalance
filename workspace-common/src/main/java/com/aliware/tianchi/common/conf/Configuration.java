@@ -1,9 +1,9 @@
 package com.aliware.tianchi.common.conf;
 
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.RingCounter;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SegmentCounterFactory;
-import com.aliware.tianchi.common.util.SkipListCounter;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -33,13 +33,13 @@ public class Configuration implements Serializable {
     /**
      * 指标统计时间窗口配置
      */
-    private long windowSizeOfStats = 10;
+    private long windowSizeOfStats = 1;
 
-    private long timeIntervalOfStats = 50;
+    private long timeIntervalOfStats = 500;
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
-    private SegmentCounterFactory counterFactory = SkipListCounter::new;
+    private SegmentCounterFactory counterFactory = () -> new RingCounter(1024);
 
     /**
      * 进程运行时信息统计队列大小
