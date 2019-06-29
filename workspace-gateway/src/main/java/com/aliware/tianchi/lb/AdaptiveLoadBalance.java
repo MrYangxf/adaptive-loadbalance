@@ -76,7 +76,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             long waits = lbStatistics.getWaits(address);
             int threads = stats.getDomainThreads();
 
-            long idleThreads = waits - stats.getActiveCount();
+            long idleThreads = threads - waits;
             if (idleThreads > maxIdleThreads) {
                 maxIdleThreads = idleThreads;
                 mostIdleIvk = invoker;
