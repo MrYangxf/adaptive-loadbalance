@@ -44,7 +44,7 @@ public abstract class SnapshotStats implements Serializable {
         long rejections = Long.parseLong(insts[7]);
         long avgResponseMs = Long.parseLong(insts[8]);
         long throughput = Long.parseLong(insts[9]);
-        ServerStats serverStats = new ServerStats(address);
+        ServerStats serverStats = new ServerStats(finalAddress);
         RuntimeInfo runInfo = isEmpty(groups[2]) || groups[2].equals("null") ?
                 null : RuntimeInfo.fromString(groups[2]);
         serverStats.setRuntimeInfo(runInfo);

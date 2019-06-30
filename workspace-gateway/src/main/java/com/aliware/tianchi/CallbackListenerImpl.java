@@ -33,7 +33,7 @@ public class CallbackListenerImpl implements CallbackListener {
                 InetSocketAddress socketAddress = NetUtils.toAddress(address);
                 String hostAddress = socketAddress.getHostName() + ':' + socketAddress.getPort();
                 boolean alias = !address.equals(hostAddress);
-                if (alias) {
+                if (alias && nonEmpty(hostAddress)) {
                     SnapshotStats hostStats = SnapshotStats.fromString(hostAddress, msg);
                     LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, hostStats);
                 }
