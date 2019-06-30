@@ -45,7 +45,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             int d1 = w1 - o1.getActiveCount();
             int d2 = w2 - o2.getActiveCount();
 
-            if (isApproximate(d1, d2, 5)) {
+            if (isApproximate(d1, d2, 10)) {
                 long a1 = o1.getAvgResponseMs(),
                         a2 = o2.getAvgResponseMs();
                 return (int) (a1 - a2);
