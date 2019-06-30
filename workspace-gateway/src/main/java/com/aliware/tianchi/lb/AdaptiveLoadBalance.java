@@ -16,8 +16,10 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static com.aliware.tianchi.common.util.MathUtil.isApproximate;
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author yangxf
@@ -36,7 +38,22 @@ public class AdaptiveLoadBalance implements LoadBalance {
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
         this.conf = conf;
-        Comparator<SnapshotStats> comparator = conf.getStatsComparator();
+        // Comparator<SnapshotStats> comparator = conf.getStatsComparator();
+        Comparator<SnapshotStats> comparator = 
+        (o1, o2) -> {
+            long a1 = o1.getAvgResponseMs(),
+                    a2 = o2.getAvgResponseMs();
+
+            if (isApproximate(a1, a2, 0)) {
+                int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
+                int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
+                int d1 = w1 - o1.getActiveCount();
+                int d2 = w2 - o2.getActiveCount();
+                return d2 - d1;
+            }
+
+            return (int) (a1 - a2);
+        };
         localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
         localHeapQ = ThreadLocal.withInitial(() -> new PriorityQueue<>(comparator));
     }
