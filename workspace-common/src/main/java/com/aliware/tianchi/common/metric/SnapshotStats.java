@@ -5,6 +5,7 @@ import com.aliware.tianchi.common.util.RuntimeInfo;
 import java.io.Serializable;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotEmpty;
+import static com.aliware.tianchi.common.util.ObjectUtil.defaultIfEmpty;
 import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
 
 /**
@@ -17,6 +18,10 @@ public abstract class SnapshotStats implements Serializable {
     private static final String GROUP_SEPARATOR = "@";
 
     public static SnapshotStats fromString(String text) {
+        return fromString(null, text);
+    }
+    
+    public static SnapshotStats fromString(String address, String text) {
         checkNotEmpty(text, "text");
 
         String[] groups = text.split(GROUP_SEPARATOR);
@@ -29,7 +34,7 @@ public abstract class SnapshotStats implements Serializable {
         if (insts.length != 10) {
             throwIllegalArg();
         }
-        String address = insts[0];
+        String finalAddress = defaultIfEmpty(address, insts[0]);
         long startTimeMs = Long.parseLong(insts[1]);
         long endTimeMs = Long.parseLong(insts[2]);
         int threads = Integer.parseInt(insts[3]);
@@ -74,7 +79,7 @@ public abstract class SnapshotStats implements Serializable {
 
             @Override
             public String getAddress() {
-                return address;
+                return finalAddress;
             }
 
             @Override

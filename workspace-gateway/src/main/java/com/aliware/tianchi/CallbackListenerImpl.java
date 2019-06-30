@@ -34,7 +34,8 @@ public class CallbackListenerImpl implements CallbackListener {
                 String hostAddress = socketAddress.getHostName() + ':' + socketAddress.getPort();
                 boolean alias = !address.equals(hostAddress);
                 if (alias) {
-                    LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, stats);
+                    SnapshotStats hostStats = SnapshotStats.fromString(hostAddress, msg);
+                    LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, hostStats);
                 }
 
                 logger.info("UPDATE " + address +
