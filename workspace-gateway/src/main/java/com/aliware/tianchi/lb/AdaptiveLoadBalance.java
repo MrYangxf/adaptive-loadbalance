@@ -19,7 +19,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import static com.aliware.tianchi.common.util.MathUtil.isApproximate;
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
-import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author yangxf
@@ -38,21 +37,25 @@ public class AdaptiveLoadBalance implements LoadBalance {
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
         this.conf = conf;
-        Comparator<SnapshotStats> comparator = 
-        (o1, o2) -> {
-            long a1 = o1.getAvgResponseMs(),
-                    a2 = o2.getAvgResponseMs();
-            
-            if (isApproximate(a1, a2, 0)) {
-                int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
-                int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
-                int d1 = w1 - o1.getActiveCount();
-                int d2 = w2 - o2.getActiveCount();
-                return d2 - d1;
-            }
+        Comparator<SnapshotStats> comparator =
+                (o1, o2) -> {
+                    long a1 = o1.getAvgResponseMs(),
+                            a2 = o2.getAvgResponseMs();
 
-            return (int) (a1 - a2);
-        };
+                    if (isApproximate(a1, a2, 0)) {
+                        int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
+                        int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
+                        int ac1 = o1.getActiveCount();
+                        int ac2 = o2.getActiveCount();
+                        int n1 = w1 - ac1 >>> 1;
+                        int n2 = w2 - ac2 >>> 1;
+                        int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
+                        int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
+                        return d2 - d1;
+                    }
+
+                    return (int) (a1 - a2);
+                };
         // Comparator<SnapshotStats> comparator = conf.getStatsComparator();
         localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
         localHeapQ = ThreadLocal.withInitial(() -> new PriorityQueue<>(comparator));
@@ -98,8 +101,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 maxIdleThreads = idleThreads;
                 mostIdleIvk = invoker;
             }
-            
-            if (stats.getActiveCount() > threads * conf.getMaxRateOfWaitingRequests() ||
+
+            if (waits > threads * conf.getMaxRateOfWaitingRequests() ||
                 runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
                 continue;
             }
