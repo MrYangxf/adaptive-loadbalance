@@ -38,16 +38,18 @@ public class CallbackListenerImpl implements CallbackListener {
                     LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, hostStats);
                 }
 
-                logger.info("UPDATE " + address +
-                            (alias ? ", " + hostAddress : "") +
-                            ", active=" + stats.getActiveCount() +
-                            ", threads=" + stats.getDomainThreads() +
-                            ", avg=" + stats.getAvgResponseMs() +
-                            ", suc=" + stats.getNumberOfSuccesses() +
-                            ", fai=" + stats.getNumberOfFailures() +
-                            ", tpt=" + stats.getThroughput() +
-                            ", run=" + stats.getServerStats().getRuntimeInfo()
-                           );
+                if (serviceId.contains("hash")) {
+                    logger.info("UPDATE " + address +
+                                (alias ? ", " + hostAddress : "") +
+                                ", active=" + stats.getActiveCount() +
+                                ", threads=" + stats.getDomainThreads() +
+                                ", avg=" + stats.getAvgResponseMs() +
+                                ", suc=" + stats.getNumberOfSuccesses() +
+                                ", fai=" + stats.getNumberOfFailures() +
+                                ", tpt=" + stats.getThroughput() +
+                                ", run=" + stats.getServerStats().getRuntimeInfo()
+                               );
+                }
             } catch (Exception e) {
                 // ... 
                 logger.error("update error", e);

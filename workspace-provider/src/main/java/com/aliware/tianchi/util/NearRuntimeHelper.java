@@ -30,6 +30,8 @@ public class NearRuntimeHelper {
 
     private volatile InstanceStats stats;
 
+    private volatile RuntimeInfo current;
+
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
         this.conf = conf;
@@ -40,7 +42,10 @@ public class NearRuntimeHelper {
             buf.addFirst(new RuntimeInfo());
             RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
             if (nonNull(stats)) {
-                stats.getServerStats().setRuntimeInfo(info);
+                if (conf.isOpenRuntimeStats()) {
+                    stats.getServerStats().setRuntimeInfo(info);
+                }
+                current = info;
                 logger.info("update " + info);
             }
             if (buf.size() >= conf.getRuntimeInfoQueueSize()) {
@@ -50,7 +55,7 @@ public class NearRuntimeHelper {
     }
 
     public RuntimeInfo getRuntimeInfo() {
-        return stats.getServerStats().getRuntimeInfo();
+        return current;
     }
 
     public InstanceStats getInstanceStats() {

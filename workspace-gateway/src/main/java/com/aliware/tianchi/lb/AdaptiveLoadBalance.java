@@ -16,7 +16,6 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static com.aliware.tianchi.common.util.MathUtil.isApproximate;
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 
@@ -63,9 +62,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         int size = invokers.size();
-        // if (ThreadLocalRandom.current().nextInt() % size == 0) {
-        //     return invokers.get(ThreadLocalRandom.current().nextInt(size)); 
-        // }
 
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
@@ -81,8 +77,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
         for (Invoker<T> invoker : invokers) {
             String address = invoker.getUrl().getAddress();
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
-            RuntimeInfo runtimeInfo;
+            RuntimeInfo runtimeInfo = null;
             if (isNull(stats) ||
+                conf.isOpenRuntimeStats() &&
                 isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
                 queue.clear();
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
@@ -98,6 +95,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             if (waits > threads * conf.getMaxRateOfWaitingRequests() ||
+                conf.isOpenRuntimeStats() &&
                 runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
                 continue;
             }
@@ -118,7 +116,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
                         ", suc=" + stats.getNumberOfSuccesses() +
                         ", fai=" + stats.getNumberOfFailures() +
                         ", tpt=" + stats.getThroughput() +
-                        ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad()
+                        (conf.isOpenRuntimeStats() ?
+                                ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
                        );
             // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
         }

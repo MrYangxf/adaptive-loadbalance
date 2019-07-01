@@ -12,6 +12,7 @@ import org.apache.dubbo.rpc.service.CallbackService;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -28,10 +29,12 @@ public class CallbackServiceImpl implements CallbackService {
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
+    static Executor executor = Executors.newSingleThreadExecutor();
+    
     public CallbackServiceImpl() {
         Configuration conf = NearRuntimeHelper.INSTANCE.getConfiguration();
         Executors.newSingleThreadScheduledExecutor()
-                 .scheduleWithFixedDelay(new PushTask(),
+                 .scheduleWithFixedDelay(() -> _updateAndNotify(true),
                                          conf.getStatsPushInitDelayMs(),
                                          conf.getStatsPushDelayMs(),
                                          TimeUnit.MILLISECONDS);
@@ -41,42 +44,45 @@ public class CallbackServiceImpl implements CallbackService {
      * key: listener type
      * value: callback listener
      */
-    private final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
+    private static final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
 
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
     }
 
-    class PushTask implements Runnable {
+    public static void updateAndNotify() {
+        executor.execute(() -> _updateAndNotify(false));
+    }
+    
+    private static void _updateAndNotify(boolean clean) {
+        
+        try {
+            // update runtime info
+            NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
 
-        @Override
-        public void run() {
-            try {
-                // update runtime info
-                NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
-
-                // notify 
-                for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
-                    try {
-                        InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
-                        if (nonNull(instanceStats)) {
-                            CallbackListener listener = entry.getValue();
-                            Set<String> serviceIds = instanceStats.getServiceIds();
-                            for (String serviceId : serviceIds) {
-                                SnapshotStats snapshot = instanceStats.snapshot(serviceId);
-                                listener.receiveServerMsg(snapshot.toString());
-                            }
+            // notify 
+            for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+                try {
+                    InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+                    if (nonNull(instanceStats)) {
+                        CallbackListener listener = entry.getValue();
+                        Set<String> serviceIds = instanceStats.getServiceIds();
+                        for (String serviceId : serviceIds) {
+                            SnapshotStats snapshot = instanceStats.snapshot(serviceId);
+                            listener.receiveServerMsg(snapshot.toString());
                         }
-                    } catch (Throwable t) {
-                        logger.error("send error", t);
                     }
+                } catch (Throwable t) {
+                    logger.error("send error", t);
                 }
-
-                NearRuntimeHelper.INSTANCE.cleanStats();
-            } catch (Throwable throwable) {
-                logger.error("schedule error", throwable);
             }
+
+            if (clean) {
+                NearRuntimeHelper.INSTANCE.cleanStats();
+            }
+        } catch (Throwable throwable) {
+            logger.error("schedule error", throwable);
         }
     }
 }
