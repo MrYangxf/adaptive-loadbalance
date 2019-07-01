@@ -48,7 +48,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                     int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
                     int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
 
-                    if (isApproximate(d1, d2, 5)) {
+                    if (isApproximate(d1, d2, 10)) {
                         long a1 = o1.getAvgResponseMs(),
                                 a2 = o2.getAvgResponseMs();
                         return (int) (a1 - a2);
