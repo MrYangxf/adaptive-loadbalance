@@ -57,21 +57,21 @@ public class CallbackServiceImpl implements CallbackService {
                 NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
 
                 // notify 
-                for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
-                    try {
-                        InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
-                        if (nonNull(instanceStats)) {
-                            CallbackListener listener = entry.getValue();
-                            Set<String> serviceIds = instanceStats.getServiceIds();
-                            for (String serviceId : serviceIds) {
-                                SnapshotStats snapshot = instanceStats.snapshot(serviceId);
-                                listener.receiveServerMsg(snapshot.toString());
-                            }
-                        }
-                    } catch (Throwable t) {
-                        logger.error("send error", t);
-                    }
-                }
+                // for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+                //     try {
+                //         InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+                //         if (nonNull(instanceStats)) {
+                //             CallbackListener listener = entry.getValue();
+                //             Set<String> serviceIds = instanceStats.getServiceIds();
+                //             for (String serviceId : serviceIds) {
+                //                 SnapshotStats snapshot = instanceStats.snapshot(serviceId);
+                //                 listener.receiveServerMsg(snapshot.toString());
+                //             }
+                //         }
+                //     } catch (Throwable t) {
+                //         logger.error("send error", t);
+                //     }
+                // }
 
                 NearRuntimeHelper.INSTANCE.cleanStats();
             } catch (Throwable throwable) {

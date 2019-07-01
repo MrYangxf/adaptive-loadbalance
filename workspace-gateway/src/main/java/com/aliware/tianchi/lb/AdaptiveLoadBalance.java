@@ -76,6 +76,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                            invocation.getMethodName() +
                            Arrays.toString(invocation.getParameterTypes());
 
+        double maxIdleCpus = Long.MIN_VALUE;
         long maxIdleThreads = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
@@ -88,17 +89,35 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
 
-            long waits = lbStatistics.getWaits(address);
+            int waits = lbStatistics.getWaits(address);
             int threads = stats.getDomainThreads();
+
 
             long idleThreads = threads - waits;
             if (idleThreads > maxIdleThreads) {
                 maxIdleThreads = idleThreads;
                 mostIdleIvk = invoker;
             }
+            
+            int activeCount = stats.getActiveCount();
+            int netWaits = waits - activeCount >>> 1;
+            int max = activeCount + (netWaits > 0 ? netWaits : 0);
 
-            if (waits > threads * conf.getMaxRateOfWaitingRequests() ||
-                runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
+            if (
+                    max > threads ||
+                    runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()
+                    ) {
+                // if ((ThreadLocalRandom.current().nextInt() % 15) == 0) {
+                //     logger.info("SKIP, waits=" + lbStatistics.getWaits(address) +
+                //                 ", active=" + stats.getActiveCount() +
+                //                 ", threads=" + stats.getDomainThreads() +
+                //                 ", avg=" + stats.getAvgResponseMs() +
+                //                 ", suc=" + stats.getNumberOfSuccesses() +
+                //                 ", fai=" + stats.getNumberOfFailures() +
+                //                 ", tpt=" + stats.getThroughput() +
+                //                 ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad()
+                //                );
+                // }
                 continue;
             }
 

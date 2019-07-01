@@ -32,7 +32,7 @@ public class Configuration implements Serializable {
     /**
      * 生产者进程最大cpu负载 0~1
      */
-    private double maxProcessCpuLoad = .8d;
+    private double maxProcessCpuLoad = 1d;
 
     private Comparator<SnapshotStats> statsComparator = LOAD_FIRST;
 

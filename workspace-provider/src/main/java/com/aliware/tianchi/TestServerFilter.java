@@ -7,6 +7,9 @@ import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
 import java.util.Arrays;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author daofeng.xjf
@@ -20,6 +23,8 @@ public class TestServerFilter implements Filter {
 
     private static final String START_MILLIS = "START_MILLIS";
 
+    private final AtomicLong counter = new AtomicLong();
+    
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         invocation.getAttachments().put(START_MILLIS, String.valueOf(System.currentTimeMillis()));
@@ -28,10 +33,30 @@ public class TestServerFilter implements Filter {
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        String serviceId = invoker.getInterface().getName() + '#' + 
-                           invocation.getMethodName() + 
+        // Executor statsExecutor = NearRuntimeHelper.INSTANCE.getStatsExecutor();
+        // if (statsExecutor == null) {
+            doStats(result, invoker, invocation);
+        // } else {
+        //     statsExecutor.execute(() -> doStats(result, invoker, invocation));
+        // }
+
+        InstanceStats stats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+        if (stats != null && 
+            (counter.getAndIncrement() & 127) == 0) {
+            String serviceId = invoker.getInterface().getName() + '#' +
+                               invocation.getMethodName() +
+                               Arrays.toString(invocation.getParameterTypes());
+            result.setAttachment("STATS", stats.snapshot(serviceId).toString());
+        }
+
+        return result;
+    }
+
+    private static void doStats(Result result, Invoker<?> invoker, Invocation invocation) {
+        String serviceId = invoker.getInterface().getName() + '#' +
+                           invocation.getMethodName() +
                            Arrays.toString(invocation.getParameterTypes());
-        
+
         InstanceStats stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
         String att = invocation.getAttachment(START_MILLIS);
 
@@ -42,7 +67,6 @@ public class TestServerFilter implements Filter {
         } else {
             stats.success(serviceId, duration);
         }
-        return result;
     }
 
 }

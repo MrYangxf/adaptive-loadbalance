@@ -11,6 +11,10 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -29,6 +33,8 @@ public class NearRuntimeHelper {
     private final LinkedList<RuntimeInfo> buf = new LinkedList<>();
 
     private volatile InstanceStats stats;
+
+    private volatile Executor statsExecutor;
 
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
@@ -62,10 +68,12 @@ public class NearRuntimeHelper {
             synchronized (this) {
                 if (stats == null) {
                     InstanceStats newStats = newStats(invoker.getUrl().getAddress());
-                    String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
-                    int nThreads = Integer.parseInt(nThreadsString);
+                    int nThreads = invoker.getUrl().getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
                     newStats.setDomainThreads(nThreads);
                     stats = newStats;
+                    statsExecutor = new ThreadPoolExecutor(4, 4,
+                                                           0, TimeUnit.MILLISECONDS,
+                                                           new ArrayBlockingQueue<>(nThreads));
                 }
             }
         }
@@ -76,6 +84,10 @@ public class NearRuntimeHelper {
         if (nonNull(stats)) {
             stats.clean();
         }
+    }
+
+    public Executor getStatsExecutor() {
+        return statsExecutor;
     }
 
     public Configuration getConfiguration() {
