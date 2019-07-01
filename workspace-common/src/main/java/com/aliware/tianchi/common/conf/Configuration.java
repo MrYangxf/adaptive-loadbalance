@@ -24,6 +24,8 @@ public class Configuration implements Serializable {
      */
     private static final int ERROR_RANGE = 0;
     
+    public static final boolean OPEN_LOGGER = true;
+    
     /**
      * 请求数占生产者线程池的最大比例 0~1
      */
@@ -39,7 +41,7 @@ public class Configuration implements Serializable {
     /**
      * 指标统计时间窗口配置
      */
-    private long windowSizeOfStats = 6;
+    private long windowSizeOfStats = 2;
 
     private long timeIntervalOfStats = 100;
 
@@ -62,7 +64,7 @@ public class Configuration implements Serializable {
      */
     private long statsPushInitDelayMs = 500;
 
-    private long statsPushDelayMs = 500;
+    private long statsPushDelayMs = 100;
 
     public double getMaxRateOfWaitingRequests() {
         return maxRateOfWaitingRequests;

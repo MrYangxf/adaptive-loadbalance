@@ -59,7 +59,9 @@ public class CallbackServiceImpl implements CallbackService {
         
         try {
             // update runtime info
-            NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
+            if (NearRuntimeHelper.INSTANCE.getConfiguration().isOpenRuntimeStats()) {
+                NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
+            }
 
             // notify 
             for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {

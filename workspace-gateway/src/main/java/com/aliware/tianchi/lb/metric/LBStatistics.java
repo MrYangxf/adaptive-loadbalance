@@ -1,5 +1,6 @@
 package com.aliware.tianchi.lb.metric;
 
+import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -25,6 +26,8 @@ public class LBStatistics {
     private final Map<String, Map<String, SnapshotStats>> registry = new ConcurrentHashMap<>();
 
     private final Map<String, LongAdder> waitCounterMap = new ConcurrentHashMap<>();
+    
+    private Configuration configuration = new Configuration();
 
     private LBStatistics() {
     }
@@ -80,4 +83,11 @@ public class LBStatistics {
         return snap;
     }
 
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
+    public void setConfiguration(Configuration configuration) {
+        this.configuration = configuration;
+    }
 }

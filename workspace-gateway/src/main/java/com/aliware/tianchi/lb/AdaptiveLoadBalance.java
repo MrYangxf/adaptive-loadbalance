@@ -16,6 +16,7 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static com.aliware.tianchi.common.conf.Configuration.OPEN_LOGGER;
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 
@@ -108,17 +109,19 @@ public class AdaptiveLoadBalance implements LoadBalance {
             assert mostIdleIvk != null;
             String address = mostIdleIvk.getUrl().getAddress();
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
-            logger.info("queue is empty, mostIdleIvk " + address +
-                        ", waits=" + lbStatistics.getWaits(address) +
-                        ", active=" + stats.getActiveCount() +
-                        ", threads=" + stats.getDomainThreads() +
-                        ", avg=" + stats.getAvgResponseMs() +
-                        ", suc=" + stats.getNumberOfSuccesses() +
-                        ", fai=" + stats.getNumberOfFailures() +
-                        ", tpt=" + stats.getThroughput() +
-                        (conf.isOpenRuntimeStats() ?
-                                ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
-                       );
+            if (OPEN_LOGGER) {
+                logger.info("queue is empty, mostIdleIvk " + address +
+                            ", waits=" + lbStatistics.getWaits(address) +
+                            ", active=" + stats.getActiveCount() +
+                            ", threads=" + stats.getDomainThreads() +
+                            ", avg=" + stats.getAvgResponseMs() +
+                            ", suc=" + stats.getNumberOfSuccesses() +
+                            ", fai=" + stats.getNumberOfFailures() +
+                            ", tpt=" + stats.getThroughput() +
+                            (conf.isOpenRuntimeStats() ?
+                                    ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
+                           );
+            }
             // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
         }
 

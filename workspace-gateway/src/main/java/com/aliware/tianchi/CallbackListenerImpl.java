@@ -9,6 +9,7 @@ import org.apache.dubbo.rpc.listener.CallbackListener;
 
 import java.net.InetSocketAddress;
 
+import static com.aliware.tianchi.common.conf.Configuration.OPEN_LOGGER;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
 /**
@@ -38,7 +39,7 @@ public class CallbackListenerImpl implements CallbackListener {
                     LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, hostStats);
                 }
 
-                if (serviceId.contains("hash")) {
+                if (OPEN_LOGGER && serviceId.contains("hash")) {
                     logger.info("UPDATE " + address +
                                 (alias ? ", " + hostAddress : "") +
                                 ", active=" + stats.getActiveCount() +

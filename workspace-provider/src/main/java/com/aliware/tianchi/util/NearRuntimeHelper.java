@@ -11,6 +11,8 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -35,6 +37,13 @@ public class NearRuntimeHelper {
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
         this.conf = conf;
+        if (!conf.isOpenRuntimeStats()) {
+            Executors.newSingleThreadScheduledExecutor()
+                     .scheduleWithFixedDelay(() -> updateRuntimeInfo(),
+                                             1000,
+                                             1000,
+                                             TimeUnit.MILLISECONDS);
+        }
     }
 
     public void updateRuntimeInfo() {
@@ -42,9 +51,7 @@ public class NearRuntimeHelper {
             buf.addFirst(new RuntimeInfo());
             RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
             if (nonNull(stats)) {
-                if (conf.isOpenRuntimeStats()) {
-                    stats.getServerStats().setRuntimeInfo(info);
-                }
+                stats.getServerStats().setRuntimeInfo(info);
                 current = info;
                 logger.info("update " + info);
             }
