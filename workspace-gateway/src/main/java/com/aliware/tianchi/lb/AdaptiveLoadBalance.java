@@ -39,22 +39,21 @@ public class AdaptiveLoadBalance implements LoadBalance {
         this.conf = conf;
         Comparator<SnapshotStats> comparator =
                 (o1, o2) -> {
-                    int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
-                    int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
-                    int ac1 = o1.getActiveCount();
-                    int ac2 = o2.getActiveCount();
-                    int n1 = w1 - ac1 >>> 1;
-                    int n2 = w2 - ac2 >>> 1;
-                    int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
-                    int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
-
-                    if (isApproximate(d1, d2, 10)) {
-                        long a1 = o1.getAvgResponseMs(),
-                                a2 = o2.getAvgResponseMs();
-                        return (int) (a1 - a2);
+                    long a1 = o1.getAvgResponseMs(),
+                            a2 = o2.getAvgResponseMs();
+                    if (a1 == a2) {
+                        int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
+                        int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
+                        int ac1 = o1.getActiveCount();
+                        int ac2 = o2.getActiveCount();
+                        int n1 = w1 - ac1 >>> 1;
+                        int n2 = w2 - ac2 >>> 1;
+                        int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
+                        int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
+                        return d2 - d1;
                     }
 
-                    return d2 - d1;
+                    return (int) (a1 - a2);
                 };
         // Comparator<SnapshotStats> comparator = conf.getStatsComparator();
         localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
@@ -63,17 +62,20 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
+        int size = invokers.size();
+        // if (ThreadLocalRandom.current().nextInt() % size == 0) {
+        //     return invokers.get(ThreadLocalRandom.current().nextInt(size)); 
+        // }
+
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
 
-        int size = invokers.size();
         Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ? localHeapQ.get() : localSmallQ.get();
 
         String serviceId = invokers.get(0).getInterface().getName() + '#' +
                            invocation.getMethodName() +
                            Arrays.toString(invocation.getParameterTypes());
 
-        // double maxIdleCpus = Long.MIN_VALUE;
         long maxIdleThreads = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
@@ -85,13 +87,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 queue.clear();
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
-
-            // double idleCpus = (1 - runtimeInfo.getProcessCpuLoad()) *
-            //                   runtimeInfo.getAvailableProcessors();
-            // if (idleCpus > maxIdleCpus) {
-            //     maxIdleCpus = idleCpus;
-            //     mostIdleIvk = invoker;
-            // }
 
             long waits = lbStatistics.getWaits(address);
             int threads = stats.getDomainThreads();
