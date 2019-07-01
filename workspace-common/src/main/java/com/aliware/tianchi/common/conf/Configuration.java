@@ -32,7 +32,7 @@ public class Configuration implements Serializable {
     /**
      * 生产者进程最大cpu负载 0~1
      */
-    private double maxProcessCpuLoad = 1d;
+    private double maxProcessCpuLoad = .99d;
 
     private Comparator<SnapshotStats> statsComparator = LOAD_FIRST;
 
@@ -47,6 +47,11 @@ public class Configuration implements Serializable {
 
     private SegmentCounterFactory counterFactory = () -> new SkipListCounter();
 
+    /**
+     * 开启运行时信息统计
+     */
+    private boolean openRuntimeStats;
+    
     /**
      * 进程运行时信息统计队列大小
      */
@@ -146,6 +151,15 @@ public class Configuration implements Serializable {
 
     public Configuration setStatsPushDelayMs(long statsPushDelayMs) {
         this.statsPushDelayMs = statsPushDelayMs;
+        return this;
+    }
+
+    public boolean isOpenRuntimeStats() {
+        return openRuntimeStats;
+    }
+
+    public Configuration setOpenRuntimeStats(boolean openRuntimeStats) {
+        this.openRuntimeStats = openRuntimeStats;
         return this;
     }
 
