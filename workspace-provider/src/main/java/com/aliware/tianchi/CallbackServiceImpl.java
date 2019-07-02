@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
@@ -30,7 +31,7 @@ public class CallbackServiceImpl implements CallbackService {
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
     static Executor executor = Executors.newSingleThreadExecutor();
-    
+
     public CallbackServiceImpl() {
         Configuration conf = NearRuntimeHelper.INSTANCE.getConfiguration();
         Executors.newSingleThreadScheduledExecutor()
@@ -46,6 +47,8 @@ public class CallbackServiceImpl implements CallbackService {
      */
     private static final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
 
+    private static final AtomicLong EPOCH = new AtomicLong();
+
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
@@ -54,29 +57,28 @@ public class CallbackServiceImpl implements CallbackService {
     public static void updateAndNotify() {
         executor.execute(() -> _updateAndNotify(false));
     }
-    
+
     private static void _updateAndNotify(boolean clean) {
-        
+
         try {
             // update runtime info
-            if (NearRuntimeHelper.INSTANCE.getConfiguration().isOpenRuntimeStats()) {
-                NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
-            }
+            NearRuntimeHelper.INSTANCE.updateInstanceRuntimeInfo();
 
             // notify 
-            for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
-                try {
-                    InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
-                    if (nonNull(instanceStats)) {
+            InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+            if (nonNull(instanceStats)) {
+                instanceStats.setEpoch(EPOCH.getAndIncrement());
+                for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+                    try {
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
                         for (String serviceId : serviceIds) {
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             listener.receiveServerMsg(snapshot.toString());
                         }
+                    } catch (Throwable t) {
+                        logger.error("send error", t);
                     }
-                } catch (Throwable t) {
-                    logger.error("send error", t);
                 }
             }
 

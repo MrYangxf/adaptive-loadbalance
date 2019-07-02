@@ -4,10 +4,7 @@ import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.rpc.listener.CallbackListener;
-
-import java.net.InetSocketAddress;
 
 import static com.aliware.tianchi.common.conf.Configuration.OPEN_LOGGER;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
@@ -31,17 +28,10 @@ public class CallbackListenerImpl implements CallbackListener {
                 String serviceId = stats.getServiceId();
                 String address = stats.getAddress();
                 LBStatistics.INSTANCE.updateInstanceStats(serviceId, address, stats);
-                InetSocketAddress socketAddress = NetUtils.toAddress(address);
-                String hostAddress = socketAddress.getHostName() + ':' + socketAddress.getPort();
-                boolean alias = !address.equals(hostAddress);
-                if (alias && nonEmpty(hostAddress)) {
-                    SnapshotStats hostStats = SnapshotStats.fromString(hostAddress, msg);
-                    LBStatistics.INSTANCE.updateInstanceStats(serviceId, hostAddress, hostStats);
-                }
 
                 if (OPEN_LOGGER && serviceId.contains("hash")) {
                     logger.info("UPDATE " + address +
-                                (alias ? ", " + hostAddress : "") +
+                                ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
                                 ", active=" + stats.getActiveCount() +
                                 ", threads=" + stats.getDomainThreads() +
                                 ", avg=" + stats.getAvgResponseMs() +

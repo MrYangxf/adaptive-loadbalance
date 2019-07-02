@@ -4,6 +4,7 @@ import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.ServerStats;
 import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
+import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.logger.Logger;
@@ -30,34 +31,23 @@ public class NearRuntimeHelper {
 
     private final LinkedList<RuntimeInfo> buf = new LinkedList<>();
 
-    private volatile InstanceStats stats;
-
     private volatile RuntimeInfo current;
+
+    private volatile InstanceStats stats;
 
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
         this.conf = conf;
-        if (!conf.isOpenRuntimeStats()) {
-            Executors.newSingleThreadScheduledExecutor()
-                     .scheduleWithFixedDelay(() -> updateRuntimeInfo(),
-                                             1000,
-                                             1000,
-                                             TimeUnit.MILLISECONDS);
-        }
+        Executors.newSingleThreadScheduledExecutor()
+                 .scheduleWithFixedDelay(this::updateRuntimeInfo,
+                                         1000,
+                                         1000,
+                                         TimeUnit.MILLISECONDS);
     }
 
-    public void updateRuntimeInfo() {
-        synchronized (buf) {
-            buf.addFirst(new RuntimeInfo());
-            RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
-            if (nonNull(stats)) {
-                stats.getServerStats().setRuntimeInfo(info);
-                current = info;
-                logger.info("update " + info);
-            }
-            if (buf.size() >= conf.getRuntimeInfoQueueSize()) {
-                buf.pollLast();
-            }
+    public void updateInstanceRuntimeInfo() {
+        if (conf.isOpenRuntimeStats() && nonNull(stats)) {
+            stats.getServerStats().setRuntimeInfo(current);
         }
     }
 
@@ -73,7 +63,8 @@ public class NearRuntimeHelper {
         if (stats == null) {
             synchronized (this) {
                 if (stats == null) {
-                    InstanceStats newStats = newStats(invoker.getUrl().getAddress());
+                    String ipAddress = DubboUtil.getIpAddress(invoker);
+                    InstanceStats newStats = newStats(ipAddress);
                     String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
                     int nThreads = Integer.parseInt(nThreadsString);
                     newStats.setDomainThreads(nThreads);
@@ -92,6 +83,17 @@ public class NearRuntimeHelper {
 
     public Configuration getConfiguration() {
         return conf;
+    }
+
+    private void updateRuntimeInfo() {
+        synchronized (buf) {
+            buf.addFirst(new RuntimeInfo());
+            current = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
+            logger.info("update " + current);
+            if (buf.size() >= conf.getRuntimeInfoQueueSize()) {
+                buf.pollLast();
+            }
+        }
     }
 
     private InstanceStats newStats(String address) {

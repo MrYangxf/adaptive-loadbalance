@@ -6,7 +6,7 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
-import java.util.Arrays;
+import static com.aliware.tianchi.common.util.DubboUtil.getServiceId;
 
 /**
  * @author daofeng.xjf
@@ -28,10 +28,8 @@ public class TestServerFilter implements Filter {
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        String serviceId = invoker.getInterface().getName() + '#' + 
-                           invocation.getMethodName() + 
-                           Arrays.toString(invocation.getParameterTypes());
-        
+        String serviceId = getServiceId(invoker, invocation);
+
         InstanceStats stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
         String att = invocation.getAttachment(START_MILLIS);
 
