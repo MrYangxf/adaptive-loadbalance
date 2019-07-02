@@ -40,17 +40,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 (o1, o2) -> {
                     long a1 = o1.getAvgResponseMs(),
                             a2 = o2.getAvgResponseMs();
-                    if (a1 == a2) {
-                        int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
-                        int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
-                        int ac1 = o1.getActiveCount();
-                        int ac2 = o2.getActiveCount();
-                        int n1 = w1 - ac1 >>> 1;
-                        int n2 = w2 - ac2 >>> 1;
-                        int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
-                        int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
-                        return d2 - d1;
-                    }
 
                     return (int) (a1 - a2);
                 };
