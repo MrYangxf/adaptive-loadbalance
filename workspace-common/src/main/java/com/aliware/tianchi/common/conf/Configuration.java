@@ -43,7 +43,7 @@ public class Configuration implements Serializable {
      */
     private long windowSizeOfStats = 3;
 
-    private long timeIntervalOfStats = 200;
+    private long timeIntervalOfStats = 100;
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
@@ -52,7 +52,7 @@ public class Configuration implements Serializable {
     /**
      * 开启运行时信息统计
      */
-    private boolean openRuntimeStats;
+    private boolean openRuntimeStats = false;
     
     /**
      * 进程运行时信息统计队列大小

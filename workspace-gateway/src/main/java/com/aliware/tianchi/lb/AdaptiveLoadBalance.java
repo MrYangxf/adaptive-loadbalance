@@ -2,6 +2,7 @@ package com.aliware.tianchi.lb;
 
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -44,11 +45,23 @@ public class AdaptiveLoadBalance implements LoadBalance {
             return invokers.get(ThreadLocalRandom.current().nextInt(size));
         }
 
+        double maxIdleCpus = Long.MIN_VALUE;
+        SnapshotStats mostIdleStats = null;
         for (SnapshotStats stats : sortStats) {
             String address = stats.getAddress();
             long waits = lbStatistics.getWaits(address);
             int threads = stats.getDomainThreads();
 
+            if (conf.isOpenRuntimeStats()) {
+                RuntimeInfo runtimeInfo = stats.getServerStats().getRuntimeInfo();
+                double idleCpus = (1 - runtimeInfo.getProcessCpuLoad()) *
+                                  runtimeInfo.getAvailableProcessors();
+                if (idleCpus > maxIdleCpus) {
+                    maxIdleCpus = idleCpus;
+                    mostIdleStats = stats;
+                }
+            }
+            
             if (waits > threads * conf.getMaxRateOfWaitingRequests() ||
                 conf.isOpenRuntimeStats() &&
                 stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
@@ -69,11 +82,29 @@ public class AdaptiveLoadBalance implements LoadBalance {
                                     ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
                            );
             }
+            
             return findInvoker(invokers, address);
         }
 
-        throw new RpcException(RpcException.BIZ_EXCEPTION, "all servers are  overload");
-
+        if (mostIdleStats != null) {
+            String address = mostIdleStats.getAddress();
+            if (OPEN_LOGGER) {
+                logger.info("MOST " + address +
+                            ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
+                            ", active=" + mostIdleStats.getActiveCount() +
+                            ", threads=" + mostIdleStats.getDomainThreads() +
+                            ", avg=" + mostIdleStats.getAvgResponseMs() +
+                            ", suc=" + mostIdleStats.getNumberOfSuccesses() +
+                            ", fai=" + mostIdleStats.getNumberOfFailures() +
+                            ", tpt=" + mostIdleStats.getThroughput() +
+                            (conf.isOpenRuntimeStats() ?
+                                    ", load=" + mostIdleStats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
+                           );
+            }
+            return findInvoker(invokers, address);
+        }
+        
+        throw new RuntimeException("all servers are  overload");
     }
 
     private static <T> Invoker<T> findInvoker(List<Invoker<T>> invokers, String address) {

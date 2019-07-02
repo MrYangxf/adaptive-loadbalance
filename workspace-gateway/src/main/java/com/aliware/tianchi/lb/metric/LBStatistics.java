@@ -32,17 +32,17 @@ public class LBStatistics {
 
     private final Comparator<SnapshotStats> comparator =
             (o1, o2) -> {
-                long a1 = o1.getAvgResponseMs(),
-                        a2 = o2.getAvgResponseMs();
-                if (isApproximate(a1, a2, 0)) {
-                    int w1 = getWaits(o1.getAddress());
-                    int w2 = getWaits(o2.getAddress());
-                    int d1 = w1 - o1.getActiveCount();
-                    int d2 = w2 - o2.getActiveCount();
-                    return d2 - d1;
+                int w1 = getWaits(o1.getAddress());
+                int w2 = getWaits(o2.getAddress());
+                int d1 = w1 - o1.getActiveCount();
+                int d2 = w2 - o2.getActiveCount();
+                if (isApproximate(d1, d2, 0)) {
+                    long a1 = o1.getAvgResponseMs(),
+                            a2 = o2.getAvgResponseMs();
+                    return (int) (a1 - a2);
                 }
 
-                return (int) (a1 - a2);
+                return d2 - d1;
             };
 
     private LBStatistics() {

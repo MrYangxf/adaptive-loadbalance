@@ -22,24 +22,27 @@ public class TestServerFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        invocation.getAttachments().put(START_MILLIS, String.valueOf(System.currentTimeMillis()));
+        // invocation.getAttachments().put(START_MILLIS, String.valueOf(System.currentTimeMillis()));
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
+        InstanceStats stats = NearRuntimeHelper.INSTANCE.getInstanceStats();
         String serviceId = getServiceId(invoker, invocation);
-
-        InstanceStats stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
-        String att = invocation.getAttachment(START_MILLIS);
-
-        long startTimeMs = att == null ? System.currentTimeMillis() : Long.parseLong(att);
-        long duration = System.currentTimeMillis() - startTimeMs;
-        if (result.hasException()) {
-            stats.failure(serviceId, duration);
-        } else {
-            stats.success(serviceId, duration);
+        if (stats == null) {
+            stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
+            stats.success(serviceId, 1);
         }
+        // String att = invocation.getAttachment(START_MILLIS);
+        //
+        // long startTimeMs = att == null ? System.currentTimeMillis() : Long.parseLong(att);
+        // long duration = System.currentTimeMillis() - startTimeMs;
+        // if (result.hasException()) {
+        //     stats.failure(serviceId, duration);
+        // } else {
+        //     stats.success(serviceId, duration);
+        // }
         return result;
     }
 
