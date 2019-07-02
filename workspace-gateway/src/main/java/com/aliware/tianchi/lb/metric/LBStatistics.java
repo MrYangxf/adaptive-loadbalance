@@ -1,15 +1,15 @@
 package com.aliware.tianchi.lb.metric;
 
-import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.rpc.Invoker;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 
-import static com.aliware.tianchi.common.util.MathUtil.isApproximate;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
@@ -25,28 +25,6 @@ public class LBStatistics {
     private final Map<String, Map<String, SnapshotStats>> registry = new ConcurrentHashMap<>();
 
     private final Map<String, LongAdder> waitCounterMap = new ConcurrentHashMap<>();
-
-    private Configuration configuration = new Configuration();
-
-    private final Map<String, List<SnapshotStats>> queueMap = new ConcurrentHashMap<>();
-
-    private final Comparator<SnapshotStats> comparator =
-            (o1, o2) -> {
-
-                long a1 = o1.getAvgResponseMs();
-                long a2 = o1.getAvgResponseMs();
-                if (a1 == a2) {
-                    int w1 = getWaits(o1.getAddress());
-                    int w2 = getWaits(o2.getAddress());
-                    int ac1 = o1.getActiveCount();
-                    int ac2 = o2.getActiveCount();
-                    int d1 = w1 - ac1;
-                    int d2 = w2 - ac2;
-                    return d2 - d1;
-                }
-
-                return (int) (a1 - a2);
-            };
 
     private LBStatistics() {
     }
@@ -68,16 +46,8 @@ public class LBStatistics {
         return instanceStatsMap.get(address);
     }
 
-    public synchronized void updateInstanceStats(String serviceId, String address, SnapshotStats snapshotStats) {
-        Map<String, SnapshotStats> instanceStatsMap = getInstanceStatsMap(serviceId);
-        instanceStatsMap.put(address, snapshotStats);
-        List<SnapshotStats> statsArrayList = new ArrayList<>(instanceStatsMap.values());
-        statsArrayList.sort(comparator);
-        queueMap.put(serviceId, Collections.unmodifiableList(statsArrayList));
-    }
-
-    public List<SnapshotStats> getSortStats(String serviceId) {
-        return queueMap.get(serviceId);
+    public void updateInstanceStats(String serviceId, String address, SnapshotStats snapshotStats) {
+        getInstanceStatsMap(serviceId).put(address, snapshotStats);
     }
 
     public void queue(String address) {
@@ -110,11 +80,4 @@ public class LBStatistics {
         return snap;
     }
 
-    public Configuration getConfiguration() {
-        return configuration;
-    }
-
-    public void setConfiguration(Configuration configuration) {
-        this.configuration = configuration;
-    }
 }

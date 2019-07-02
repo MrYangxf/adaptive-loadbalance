@@ -5,8 +5,6 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
-import static com.aliware.tianchi.common.util.DubboUtil.getIpAddress;
-
 /**
  * @author daofeng.xjf
  * <p>
@@ -19,13 +17,13 @@ public class TestClientFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        LBStatistics.INSTANCE.queue(getIpAddress(invoker));
+        LBStatistics.INSTANCE.queue(invoker.getUrl().getAddress());
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        LBStatistics.INSTANCE.dequeue(getIpAddress(invoker));
+        LBStatistics.INSTANCE.dequeue(invoker.getUrl().getAddress());
         return result;
     }
 }

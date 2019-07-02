@@ -4,7 +4,9 @@ import com.aliware.tianchi.common.util.RuntimeInfo;
 
 import java.io.Serializable;
 
-import static com.aliware.tianchi.common.util.ObjectUtil.*;
+import static com.aliware.tianchi.common.util.ObjectUtil.checkNotEmpty;
+import static com.aliware.tianchi.common.util.ObjectUtil.defaultIfEmpty;
+import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
 
 /**
  * @author yangxf
@@ -18,7 +20,7 @@ public abstract class SnapshotStats implements Serializable {
     public static SnapshotStats fromString(String text) {
         return fromString(null, text);
     }
-
+    
     public static SnapshotStats fromString(String address, String text) {
         checkNotEmpty(text, "text");
 
@@ -29,20 +31,19 @@ public abstract class SnapshotStats implements Serializable {
 
         String serviceId = groups[0];
         String[] insts = groups[1].split(SEPARATOR);
-        if (insts.length != 11) {
+        if (insts.length != 10) {
             throwIllegalArg();
         }
         String finalAddress = defaultIfEmpty(address, insts[0]);
-        long epoch = Long.parseLong(insts[1]);
-        long startTimeMs = Long.parseLong(insts[2]);
-        long endTimeMs = Long.parseLong(insts[3]);
-        int threads = Integer.parseInt(insts[4]);
-        int activeCount = Integer.parseInt(insts[5]);
-        long successes = Long.parseLong(insts[6]);
-        long failures = Long.parseLong(insts[7]);
-        long rejections = Long.parseLong(insts[8]);
-        long avgResponseMs = Long.parseLong(insts[9]);
-        long throughput = Long.parseLong(insts[10]);
+        long startTimeMs = Long.parseLong(insts[1]);
+        long endTimeMs = Long.parseLong(insts[2]);
+        int threads = Integer.parseInt(insts[3]);
+        int activeCount = Integer.parseInt(insts[4]);
+        long successes = Long.parseLong(insts[5]);
+        long failures = Long.parseLong(insts[6]);
+        long rejections = Long.parseLong(insts[7]);
+        long avgResponseMs = Long.parseLong(insts[8]);
+        long throughput = Long.parseLong(insts[9]);
         ServerStats serverStats = new ServerStats(finalAddress);
         RuntimeInfo runInfo = isEmpty(groups[2]) || groups[2].equals("null") ?
                 null : RuntimeInfo.fromString(groups[2]);
@@ -54,11 +55,6 @@ public abstract class SnapshotStats implements Serializable {
             @Override
             public String getServiceId() {
                 return serviceId;
-            }
-
-            @Override
-            public long epoch() {
-                return epoch;
             }
 
             @Override
@@ -122,7 +118,6 @@ public abstract class SnapshotStats implements Serializable {
     public final String toString() {
         return getServiceId() + GROUP_SEPARATOR
                + getAddress() + SEPARATOR
-               + epoch() + SEPARATOR
                + startTimeMs() + SEPARATOR
                + endTimeMs() + SEPARATOR
                + getDomainThreads() + SEPARATOR
@@ -140,10 +135,6 @@ public abstract class SnapshotStats implements Serializable {
     }
 
     public String getServiceId() {
-        throw new UnsupportedOperationException();
-    }
-
-    public long epoch() {
         throw new UnsupportedOperationException();
     }
 

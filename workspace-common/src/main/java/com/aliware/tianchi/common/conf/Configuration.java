@@ -24,8 +24,6 @@ public class Configuration implements Serializable {
      */
     private static final int ERROR_RANGE = 0;
     
-    public static final boolean OPEN_LOGGER = true;
-    
     /**
      * 请求数占生产者线程池的最大比例 0~1
      */
@@ -43,7 +41,7 @@ public class Configuration implements Serializable {
      */
     private long windowSizeOfStats = 3;
 
-    private long timeIntervalOfStats = 100;
+    private long timeIntervalOfStats = 200;
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
@@ -52,7 +50,7 @@ public class Configuration implements Serializable {
     /**
      * 开启运行时信息统计
      */
-    private boolean openRuntimeStats = false;
+    private boolean openRuntimeStats;
     
     /**
      * 进程运行时信息统计队列大小

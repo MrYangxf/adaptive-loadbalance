@@ -38,8 +38,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
      */
     private final ServerStats serverStats;
 
-    private volatile long epoch;
-    
     private volatile int activeCount;
     private volatile int domainThreads;
 
@@ -87,16 +85,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
     @Override
     public String getAddress() {
         return address;
-    }
-
-    @Override
-    public long getEpoch() {
-        return epoch;
-    }
-
-    @Override
-    public void setEpoch(long epoch) {
-        this.epoch = epoch;
     }
 
     @Override
@@ -286,11 +274,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
             @Override
             public String getServiceId() {
                 return serviceId;
-            }
-
-            @Override
-            public long epoch() {
-                return epoch;
             }
 
             @Override
