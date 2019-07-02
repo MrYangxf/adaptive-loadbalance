@@ -2,6 +2,7 @@ package com.aliware.tianchi;
 
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
+import com.aliware.tianchi.common.metric.ServerStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.common.logger.Logger;
@@ -11,10 +12,7 @@ import org.apache.dubbo.rpc.service.CallbackService;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -65,22 +63,114 @@ public class CallbackServiceImpl implements CallbackService {
             NearRuntimeHelper.INSTANCE.updateInstanceRuntimeInfo();
 
             // notify 
+            ConcurrentLinkedQueue<Long> queue = NearRuntimeHelper.INSTANCE.get();
+            long total = 0, size = 0;
+            for (Long d : queue) {
+                total += d;
+                size++;
+            }
+
+            long avg = total / (size + 1);
+            
             InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
             if (nonNull(instanceStats)) {
-                instanceStats.setEpoch(EPOCH.getAndIncrement());
                 for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                     try {
                         CallbackListener listener = entry.getValue();
-                        Set<String> serviceIds = instanceStats.getServiceIds();
-                        for (String serviceId : serviceIds) {
-                            SnapshotStats snapshot = instanceStats.snapshot(serviceId);
-                            listener.receiveServerMsg(snapshot.toString());
+                        for (String serviceId : NearRuntimeHelper.INSTANCE.serviceIdMap.keySet()) {
+                            SnapshotStats ss = new SnapshotStats() {
+                                private static final long serialVersionUID = -2441001503497939317L;
+
+                                @Override
+                                public String getAddress() {
+                                    return instanceStats.getAddress();
+                                }
+
+                                @Override
+                                public String getServiceId() {
+                                    return serviceId;
+                                }
+
+                                @Override
+                                public int getDomainThreads() {
+                                    return instanceStats.getDomainThreads();
+                                }
+
+                                @Override
+                                public int getActiveCount() {
+                                    return TestServerFilter.longAdder.intValue();
+                                }
+
+                                @Override
+                                public ServerStats getServerStats() {
+                                    return instanceStats.getServerStats();
+                                }
+
+                                @Override
+                                public long getAvgResponseMs() {
+                                    return avg;
+                                }
+
+                                @Override
+                                public long epoch() {
+                                    return 0;
+                                }
+
+                                @Override
+                                public long startTimeMs() {
+                                    return 0;
+                                }
+
+                                @Override
+                                public long endTimeMs() {
+                                    return 0;
+                                }
+
+                                @Override
+                                public long getThroughput() {
+                                    return 0;
+                                }
+
+                                @Override
+                                public long getNumberOfSuccesses() {
+                                    return 0;
+                                }
+
+                                @Override
+                                public long getNumberOfFailures() {
+                                    return 0;
+                                }
+
+                                @Override
+                                public long getNumberOfRejections() {
+                                    return 0;
+                                }
+                            };
+                            listener.receiveServerMsg(ss.toString());
                         }
                     } catch (Throwable t) {
                         logger.error("send error", t);
                     }
                 }
             }
+            
+            
+            // InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+            // if (nonNull(instanceStats)) {
+            //     instanceStats.setEpoch(EPOCH.getAndIncrement());
+            //     for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+            //         try {
+            //             CallbackListener listener = entry.getValue();
+            //             Set<String> serviceIds = instanceStats.getServiceIds();
+            //             for (String serviceId : serviceIds) {
+            //                 SnapshotStats snapshot = instanceStats.snapshot(serviceId);
+            //                 listener.receiveServerMsg(snapshot.toString());
+            //             }
+            //         } catch (Throwable t) {
+            //             logger.error("send error", t);
+            //         }
+            //     }
+            // }
 
             if (clean) {
                 NearRuntimeHelper.INSTANCE.cleanStats();

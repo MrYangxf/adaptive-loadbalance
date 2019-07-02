@@ -12,6 +12,9 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -103,5 +106,21 @@ public class NearRuntimeHelper {
                                            conf.getTimeIntervalOfStats(),
                                            conf.getTimeUnitOfStats(),
                                            conf.getCounterFactory());
+    }
+
+    private volatile ConcurrentLinkedQueue<Long> queue = new ConcurrentLinkedQueue<>();
+
+    public final Map<String, String> serviceIdMap = new ConcurrentHashMap<>();
+    
+    
+    
+    public void queue(long duration) {
+        queue.offer(duration);
+    }
+    
+    public synchronized ConcurrentLinkedQueue<Long> get() {
+        ConcurrentLinkedQueue<Long> q = queue;
+        queue = new ConcurrentLinkedQueue<>();
+        return q;
     }
 }

@@ -104,7 +104,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             return findInvoker(invokers, address);
         }
         
-        throw new RuntimeException("all servers are  overload");
+        throw new RuntimeException("all servers are  overloaded");
     }
 
     private static <T> Invoker<T> findInvoker(List<Invoker<T>> invokers, String address) {
