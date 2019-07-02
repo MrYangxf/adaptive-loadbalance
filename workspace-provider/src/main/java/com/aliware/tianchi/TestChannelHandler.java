@@ -48,7 +48,7 @@ public class TestChannelHandler extends WrappedChannelHandler {
                 if (!requestLimiter.tryAcquire((Request) message, (int) adder.getValue())) {
                     Request request = (Request) message;
                     if (request.isTwoWay()) {
-                        String msg = "Server side(" + url.getIp() + "," + url.getPort() + ") request limiter acquired failed";
+                        String msg = "TEST Server side(" + url.getIp() + "," + url.getPort() + ") request limiter acquired failed";
                         Response response = new Response(request.getId(), request.getVersion());
                         response.setStatus(Response.SERVER_REQUEST_LIMIT);
                         response.setErrorMessage(msg);
