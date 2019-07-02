@@ -12,18 +12,18 @@ import java.util.concurrent.*;
 /**
  * @author yangxf
  */
-@Adaptive
+// @Adaptive
 public class TestThreadPool implements ThreadPool {
 
     @Override
     public Executor getExecutor(URL url) {
+        System.out.println("HHHHH");
         String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);
         int threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
         int queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);
         int coreSize = Runtime.getRuntime().availableProcessors() * 2;
-        System.out.println("HHHHHHH");
         return new ThreadPoolExecutor(coreSize, coreSize, 0, TimeUnit.MILLISECONDS,
-                                      new ArrayBlockingQueue<>(threads + queues),
+                                      new ArrayBlockingQueue<>(threads + queues - coreSize),
                                       new NamedInternalThreadFactory(name, true), new AbortPolicyWithReport(name, url));
     }
 
