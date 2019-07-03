@@ -20,7 +20,7 @@ public interface SegmentCounter {
      * @param toOffset   exclusive
      */
     default long sum(long fromOffset, long toOffset) {
-        return sum(fromOffset, false, toOffset, true);
+        return sum(fromOffset, true, toOffset, false);
     }
 
 
