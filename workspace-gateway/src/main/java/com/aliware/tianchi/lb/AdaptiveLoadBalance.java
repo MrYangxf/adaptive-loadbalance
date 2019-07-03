@@ -16,6 +16,7 @@ import org.apache.dubbo.rpc.cluster.LoadBalance;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
@@ -132,7 +133,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
 
             if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
-            logger.info(" select " + stats.getAddress() +
+            logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + stats.getAddress() +
                         ", waits=" + lbStatistics.getWaits(stats.getAddress()) +
                         ", active=" + stats.getActiveCount() +
                         ", threads=" + stats.getDomainThreads() +

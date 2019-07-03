@@ -8,6 +8,7 @@ import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
@@ -32,7 +33,7 @@ public class CallbackListenerImpl implements CallbackListener {
                 LBStatistics.INSTANCE.updateInstanceStats(serviceId, address, stats);
 
                 if (serviceId.contains("hash")) {
-                    logger.info("UPDATE " + address +
+                    logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " UPDATE " + address +
                                 ", active=" + stats.getActiveCount() +
                                 ", threads=" + stats.getDomainThreads() +
                                 ", avg=" + stats.getAvgResponseMs() +
