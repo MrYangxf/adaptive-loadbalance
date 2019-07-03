@@ -1,13 +1,14 @@
 package com.aliware.tianchi.lb.metric;
 
+import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.RuntimeInfo;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.rpc.Invoker;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -24,7 +25,28 @@ public class LBStatistics {
     // key=getServiceId, value={key=address, value=SnapshotStats}
     private final Map<String, Map<String, SnapshotStats>> registry = new ConcurrentHashMap<>();
 
-    private final Map<String, LongAdder> waitCounterMap = new ConcurrentHashMap<>();
+    private final Map<String, AtomicInteger> waitCounterMap = new ConcurrentHashMap<>();
+
+    private Configuration configuration = new Configuration();
+
+    private final Map<String, List<SnapshotStats>> queueMap = new ConcurrentHashMap<>();
+
+    private final Comparator<SnapshotStats> comparator =
+            (o1, o2) -> {
+
+                int s1 = o1.getActiveCount();
+                int s2 = o2.getActiveCount();
+
+                RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo();
+                RuntimeInfo r2 = o2.getServerStats().getRuntimeInfo();
+
+                if (nonNull(r1) && nonNull(r2)) {
+                    s1 /= r1.getAvailableProcessors();
+                    s2 /= r2.getAvailableProcessors();
+                }
+                
+                return (s1 - s2);
+            };
 
     private LBStatistics() {
     }
@@ -46,22 +68,30 @@ public class LBStatistics {
         return instanceStatsMap.get(address);
     }
 
-    public void updateInstanceStats(String serviceId, String address, SnapshotStats snapshotStats) {
-        getInstanceStatsMap(serviceId).put(address, snapshotStats);
+    public synchronized void updateInstanceStats(String serviceId, String address, SnapshotStats snapshotStats) {
+        Map<String, SnapshotStats> instanceStatsMap = getInstanceStatsMap(serviceId);
+        instanceStatsMap.put(address, snapshotStats);
+        List<SnapshotStats> statsArrayList = new ArrayList<>(instanceStatsMap.values());
+        statsArrayList.sort(comparator);
+        queueMap.put(serviceId, Collections.unmodifiableList(statsArrayList));
+    }
+
+    public List<SnapshotStats> getSortStats(String serviceId) {
+        return queueMap.get(serviceId);
     }
 
     public void queue(String address) {
-        waitCounterMap.computeIfAbsent(address, k -> new LongAdder())
-                      .increment();
+        waitCounterMap.computeIfAbsent(address, k -> new AtomicInteger())
+                      .getAndIncrement();
     }
 
     public void dequeue(String address) {
-        waitCounterMap.computeIfAbsent(address, k -> new LongAdder())
-                      .decrement();
+        waitCounterMap.computeIfAbsent(address, k -> new AtomicInteger())
+                      .getAndDecrement();
     }
 
     public int getWaits(String address) {
-        LongAdder counter = waitCounterMap.get(address);
+        AtomicInteger counter = waitCounterMap.get(address);
         if (nonNull(counter)) {
             return counter.intValue();
         }
@@ -80,4 +110,11 @@ public class LBStatistics {
         return snap;
     }
 
+    public Configuration getConfiguration() {
+        return configuration;
+    }
+
+    public void setConfiguration(Configuration configuration) {
+        this.configuration = configuration;
+    }
 }

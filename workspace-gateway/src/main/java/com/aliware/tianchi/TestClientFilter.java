@@ -1,10 +1,11 @@
 package com.aliware.tianchi;
 
-import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
+
+import static com.aliware.tianchi.common.util.DubboUtil.getIpAddress;
 
 /**
  * @author daofeng.xjf
@@ -18,13 +19,13 @@ public class TestClientFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        LBStatistics.INSTANCE.queue(DubboUtil.getIpAddress(invoker));
+        LBStatistics.INSTANCE.queue(getIpAddress(invoker));
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        LBStatistics.INSTANCE.dequeue(DubboUtil.getIpAddress(invoker));
+        LBStatistics.INSTANCE.dequeue(getIpAddress(invoker));
         return result;
     }
 }

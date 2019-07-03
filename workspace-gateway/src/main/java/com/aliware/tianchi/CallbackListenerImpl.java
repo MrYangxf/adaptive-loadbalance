@@ -6,6 +6,7 @@ import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 
+import static com.aliware.tianchi.common.conf.Configuration.OPEN_LOGGER;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
 /**
@@ -28,8 +29,7 @@ public class CallbackListenerImpl implements CallbackListener {
                 String address = stats.getAddress();
                 LBStatistics.INSTANCE.updateInstanceStats(serviceId, address, stats);
 
-
-                if (serviceId.contains("hash")) {
+                if (OPEN_LOGGER && serviceId.contains("hash")) {
                     logger.info("UPDATE " + address +
                                 ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
                                 ", active=" + stats.getActiveCount() +
@@ -43,7 +43,7 @@ public class CallbackListenerImpl implements CallbackListener {
                 }
             } catch (Exception e) {
                 // ... 
-                logger.error("update error", e);
+                logger.error("update error msg=" + msg, e);
             }
         }
     }

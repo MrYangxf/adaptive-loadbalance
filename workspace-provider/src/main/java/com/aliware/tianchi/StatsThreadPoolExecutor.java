@@ -20,7 +20,6 @@ public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
     }
 
-
     @Override
     public int getActiveCount() {
         return counter.intValue();
@@ -28,11 +27,13 @@ public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
 
     @Override
     protected void beforeExecute(Thread t, Runnable r) {
+        super.beforeExecute(t, r);
         counter.getAndIncrement();
     }
 
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
         counter.getAndDecrement();
+        super.afterExecute(r, t);
     }
 }

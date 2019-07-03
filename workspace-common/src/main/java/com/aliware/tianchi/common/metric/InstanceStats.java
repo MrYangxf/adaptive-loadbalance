@@ -15,6 +15,10 @@ public interface InstanceStats extends Serializable {
 
     String getAddress();
 
+    long getEpoch();
+
+    void setEpoch(long epoch);
+    
     /**
      * 获取系统、jvm统计指标
      */

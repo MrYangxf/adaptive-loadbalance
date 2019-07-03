@@ -1,13 +1,14 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.common.metric.InstanceStats;
-import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
-import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.aliware.tianchi.common.util.DubboUtil.getServiceId;
 
 /**
  * @author daofeng.xjf
@@ -23,24 +24,24 @@ public class TestServerFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        invocation.getAttachments().put(START_MILLIS, String.valueOf(System.currentTimeMillis()));
+        // invocation.getAttachments().put(START_MILLIS, String.valueOf(System.currentTimeMillis()));
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        String serviceId = DubboUtil.getServiceId(invoker, invocation);
-
+        
         InstanceStats stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
-        String att = invocation.getAttachment(START_MILLIS);
+        NearRuntimeHelper.INSTANCE.putServiceId(getServiceId(invoker, invocation));
+        // String att = invocation.getAttachment(START_MILLIS);
 
-        long startTimeMs = att == null ? System.currentTimeMillis() : Long.parseLong(att);
-        long duration = System.currentTimeMillis() - startTimeMs;
-        if (result.hasException()) {
-            stats.failure(serviceId, duration);
-        } else {
-            stats.success(serviceId, duration);
-        }
+        // long startTimeMs = att == null ? System.currentTimeMillis() : Long.parseLong(att);
+        // long duration = System.currentTimeMillis() - startTimeMs;
+        // if (result.hasException()) {
+        //     stats.failure(serviceId, duration);
+        // } else {
+        //     stats.success(serviceId, duration);
+        // }
         return result;
     }
 

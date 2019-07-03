@@ -30,9 +30,10 @@ public class TestRequestLimiter implements RequestLimiter {
      */
     @Override
     public boolean tryAcquire(Request request, int activeTaskCount) {
+        helper.incr(activeTaskCount);
         InstanceStats stats = helper.getInstanceStats();
         if (nonNull(stats)) {
-            stats.setActiveCount(activeTaskCount);
+            // stats.setActiveCount(activeTaskCount);
             RuntimeInfo runtimeInfo = helper.getRuntimeInfo();
             if (nonNull(runtimeInfo)) {
                 double processCpuLoad = runtimeInfo.getProcessCpuLoad();
