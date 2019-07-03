@@ -8,7 +8,7 @@ import org.apache.dubbo.remoting.Dispatcher;
 /**
  * @author yangxf
  */
-@Adaptive
+// @Adaptive
 public class TestDispatcher implements Dispatcher {
     @Override
     public ChannelHandler dispatch(ChannelHandler handler, URL url) {

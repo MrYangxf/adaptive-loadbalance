@@ -2,6 +2,7 @@ package com.aliware.tianchi.lb;
 
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SmallPriorityQueue;
 import com.aliware.tianchi.lb.metric.LBStatistics;
@@ -38,6 +39,14 @@ public class AdaptiveLoadBalance implements LoadBalance {
         this.conf = conf;
         Comparator<SnapshotStats> comparator =
                 (o1, o2) -> {
+                    // int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
+                    // int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
+
+                    // int d1 =  o1.getActiveCount() / o1.getServerStats().getRuntimeInfo().getAvailableProcessors();
+                    // int d2 =  o2.getActiveCount() / o2.getServerStats().getRuntimeInfo().getAvailableProcessors();
+                    //
+                    // return d1 - d2;
+                    
                     long a1 = o1.getAvgResponseMs(),
                             a2 = o2.getAvgResponseMs();
 
@@ -57,14 +66,12 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
         Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ? localHeapQ.get() : localSmallQ.get();
 
-        String serviceId = invokers.get(0).getInterface().getName() + '#' +
-                           invocation.getMethodName() +
-                           Arrays.toString(invocation.getParameterTypes());
+        String serviceId = DubboUtil.getServiceId(invokers.get(0), invocation);
 
         long maxIdleThreads = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
-            String address = invoker.getUrl().getAddress();
+            String address = DubboUtil.getIpAddress(invoker);
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
             RuntimeInfo runtimeInfo = null;
             if (isNull(stats) ||
@@ -95,7 +102,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
         if (queue.isEmpty()) {
             assert mostIdleIvk != null;
-            String address = mostIdleIvk.getUrl().getAddress();
+            String address = DubboUtil.getIpAddress(mostIdleIvk);
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
             logger.info("queue is empty, mostIdleIvk " + address +
                         ", waits=" + lbStatistics.getWaits(address) +
@@ -117,10 +124,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 break;
             }
 
-            if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
-                mask = (mask << 1) | mask;
-                continue;
-            }
+            // if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
+            //     mask = (mask << 1) | mask;
+            //     continue;
+            // }
             queue.clear();
             return mapping.get(stats);
         }

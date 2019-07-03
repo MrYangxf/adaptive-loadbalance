@@ -4,6 +4,7 @@ import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.ServerStats;
 import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
+import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.logger.Logger;
@@ -66,7 +67,8 @@ public class NearRuntimeHelper {
         if (stats == null) {
             synchronized (this) {
                 if (stats == null) {
-                    InstanceStats newStats = newStats(invoker.getUrl().getAddress());
+                    String ipAddress = DubboUtil.getIpAddress(invoker);
+                    InstanceStats newStats = newStats(ipAddress);
                     String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
                     int nThreads = Integer.parseInt(nThreadsString);
                     newStats.setDomainThreads(nThreads);
