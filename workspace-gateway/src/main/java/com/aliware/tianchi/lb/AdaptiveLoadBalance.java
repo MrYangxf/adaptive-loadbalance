@@ -2,6 +2,7 @@ package com.aliware.tianchi.lb;
 
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SmallPriorityQueue;
 import com.aliware.tianchi.lb.metric.LBStatistics;
@@ -68,14 +69,11 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
         Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ? localHeapQ.get() : localSmallQ.get();
 
-        String serviceId = invokers.get(0).getInterface().getName() + '#' +
-                           invocation.getMethodName() +
-                           Arrays.toString(invocation.getParameterTypes());
-
+        String serviceId = DubboUtil.getServiceId(invokers.get(0), invocation);
         long maxIdleThreads = Long.MIN_VALUE;
         Invoker<T> mostIdleIvk = null;
         for (Invoker<T> invoker : invokers) {
-            String address = invoker.getUrl().getAddress();
+            String address = DubboUtil.getIpAddress(invoker);
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
             RuntimeInfo runtimeInfo = null;
             if (isNull(stats) ||

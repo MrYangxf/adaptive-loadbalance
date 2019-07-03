@@ -1,6 +1,7 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.common.metric.InstanceStats;
+import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
@@ -28,9 +29,7 @@ public class TestServerFilter implements Filter {
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        String serviceId = invoker.getInterface().getName() + '#' + 
-                           invocation.getMethodName() + 
-                           Arrays.toString(invocation.getParameterTypes());
+        String serviceId = DubboUtil.getServiceId(invoker, invocation);
         
         InstanceStats stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
         String att = invocation.getAttachment(START_MILLIS);

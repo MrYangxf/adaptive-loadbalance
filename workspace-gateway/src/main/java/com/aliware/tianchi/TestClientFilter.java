@@ -1,5 +1,6 @@
 package com.aliware.tianchi;
 
+import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
@@ -17,13 +18,13 @@ public class TestClientFilter implements Filter {
 
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        LBStatistics.INSTANCE.queue(invoker.getUrl().getAddress());
+        LBStatistics.INSTANCE.queue(DubboUtil.getIpAddress(invoker));
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        LBStatistics.INSTANCE.dequeue(invoker.getUrl().getAddress());
+        LBStatistics.INSTANCE.dequeue(DubboUtil.getIpAddress(invoker));
         return result;
     }
 }
