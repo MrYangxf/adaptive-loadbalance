@@ -62,8 +62,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
                         return (int) (a1 - a2);
                     }
 
-                    double d1 = o1.getActiveCount() / (r1.getProcessCpuLoad() * r1.getAvailableProcessors());
-                    double d2 = o2.getActiveCount() / (r2.getProcessCpuLoad() * r2.getAvailableProcessors());
+                    double d1 = (r1.getProcessCpuLoad() * r1.getAvailableProcessors()) / o1.getActiveCount();
+                    double d2 = (r2.getProcessCpuLoad() * r2.getAvailableProcessors()) / o2.getActiveCount();
 
                     return Double.compare(d1, d2);
                 };
