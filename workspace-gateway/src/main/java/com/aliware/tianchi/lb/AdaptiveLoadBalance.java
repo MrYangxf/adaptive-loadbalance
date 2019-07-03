@@ -130,6 +130,20 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 mask = (mask << 1) | mask;
                 continue;
             }
+
+            if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
+            logger.info(" select " + stats.getAddress() +
+                        ", waits=" + lbStatistics.getWaits(stats.getAddress()) +
+                        ", active=" + stats.getActiveCount() +
+                        ", threads=" + stats.getDomainThreads() +
+                        ", avg=" + stats.getAvgResponseMs() +
+                        ", suc=" + stats.getNumberOfSuccesses() +
+                        ", fai=" + stats.getNumberOfFailures() +
+                        ", tpt=" + stats.getThroughput() +
+                        (conf.isOpenRuntimeStats() ?
+                                ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
+                       );
+            
             queue.clear();
             return mapping.get(stats);
         }

@@ -50,7 +50,7 @@ public class Configuration implements Serializable {
     /**
      * 开启运行时信息统计
      */
-    private boolean openRuntimeStats;
+    private boolean openRuntimeStats = true;
     
     /**
      * 进程运行时信息统计队列大小
