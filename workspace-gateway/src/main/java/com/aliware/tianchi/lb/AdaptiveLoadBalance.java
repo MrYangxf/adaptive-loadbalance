@@ -40,21 +40,32 @@ public class AdaptiveLoadBalance implements LoadBalance {
         this.conf = conf;
         Comparator<SnapshotStats> comparator =
                 (o1, o2) -> {
-                    long a1 = o1.getAvgResponseMs(),
-                            a2 = o2.getAvgResponseMs();
-                    if (a1 == a2) {
-                        int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
-                        int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
-                        int ac1 = o1.getActiveCount();
-                        int ac2 = o2.getActiveCount();
-                        int n1 = w1 - ac1 >>> 1;
-                        int n2 = w2 - ac2 >>> 1;
-                        int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
-                        int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
-                        return d2 - d1;
+
+                    RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo();
+                    RuntimeInfo r2 = o1.getServerStats().getRuntimeInfo();
+
+                    if (isNull(r1) || isNull(r2)) {
+                        long a1 = o1.getAvgResponseMs(),
+                                a2 = o2.getAvgResponseMs();
+                        if (a1 == a2) {
+                            int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
+                            int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
+                            int ac1 = o1.getActiveCount();
+                            int ac2 = o2.getActiveCount();
+                            int n1 = w1 - ac1 >>> 1;
+                            int n2 = w2 - ac2 >>> 1;
+                            int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
+                            int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
+                            return d2 - d1;
+                        }
+
+                        return (int) (a1 - a2);
                     }
 
-                    return (int) (a1 - a2);
+                    double d1 = o1.getActiveCount() / (r1.getProcessCpuLoad() * r1.getAvailableProcessors());
+                    double d2 = o2.getActiveCount() / (r2.getProcessCpuLoad() * r2.getAvailableProcessors());
+
+                    return Double.compare(d1, d2);
                 };
         // Comparator<SnapshotStats> comparator = conf.getStatsComparator();
         localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
