@@ -27,14 +27,14 @@ public class Configuration implements Serializable {
     /**
      * 请求数占生产者线程池的最大比例 0~1
      */
-    private double maxRateOfWaitingRequests = .8d;
+    private double maxRateOfWaitingRequests = .85d;
 
     /**
      * 生产者进程最大cpu负载 0~1
      */
     private double maxProcessCpuLoad = .99d;
 
-    private Comparator<SnapshotStats> statsComparator = LOAD_FIRST;
+    private Comparator<SnapshotStats> statsComparator = null;
 
     /**
      * 指标统计时间窗口配置
@@ -163,39 +163,39 @@ public class Configuration implements Serializable {
         return this;
     }
 
-    public static final Comparator<SnapshotStats> LOAD_FIRST = (o1, o2) -> {
-        long a1 = o1.getAvgResponseMs(),
-                a2 = o2.getAvgResponseMs();
-
-        if (isApproximate(a1, a2, ERROR_RANGE)) {
-            RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
-                    r2 = o2.getServerStats().getRuntimeInfo();
-            if (nonNull(r1) && nonNull(r2)) {
-                double d = (1 - r1.getProcessCpuLoad()) * r1.getAvailableProcessors() -
-                           (1 - r2.getProcessCpuLoad()) * r2.getAvailableProcessors();
-                return d > 0 ? -1 : d < 0 ? 1 : 0;
-            }
-        }
-
-        return (int) (a1 - a2);
-    };
-
-    public static final Comparator<SnapshotStats> THREADS_FIRST = (o1, o2) -> {
-        long a1 = o1.getAvgResponseMs(),
-                a2 = o2.getAvgResponseMs();
-
-        if (isApproximate(a1, a2, ERROR_RANGE)) {
-            RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
-                    r2 = o2.getServerStats().getRuntimeInfo();
-            int idles1 = o1.getDomainThreads() - o1.getActiveCount(),
-                    idles2 = o2.getDomainThreads() - o2.getActiveCount();
-            if (nonNull(r1) && nonNull(r2)) {
-                idles1 /= r1.getAvailableProcessors();
-                idles2 /= r2.getAvailableProcessors();
-            }
-            return idles2 - idles1;
-        }
-
-        return (int) (a1 - a2);
-    };
+    // public static final Comparator<SnapshotStats> LOAD_FIRST = (o1, o2) -> {
+    //     long a1 = o1.getAvgResponseMs(),
+    //             a2 = o2.getAvgResponseMs();
+    //
+    //     if (isApproximate(a1, a2, ERROR_RANGE)) {
+    //         RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
+    //                 r2 = o2.getServerStats().getRuntimeInfo();
+    //         if (nonNull(r1) && nonNull(r2)) {
+    //             double d = (1 - r1.getProcessCpuLoad()) * r1.getAvailableProcessors() -
+    //                        (1 - r2.getProcessCpuLoad()) * r2.getAvailableProcessors();
+    //             return d > 0 ? -1 : d < 0 ? 1 : 0;
+    //         }
+    //     }
+    //
+    //     return (int) (a1 - a2);
+    // };
+    //
+    // public static final Comparator<SnapshotStats> THREADS_FIRST = (o1, o2) -> {
+    //     long a1 = o1.getAvgResponseMs(),
+    //             a2 = o2.getAvgResponseMs();
+    //
+    //     if (isApproximate(a1, a2, ERROR_RANGE)) {
+    //         RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
+    //                 r2 = o2.getServerStats().getRuntimeInfo();
+    //         int idles1 = o1.getDomainThreads() - o1.getActiveCount(),
+    //                 idles2 = o2.getDomainThreads() - o2.getActiveCount();
+    //         if (nonNull(r1) && nonNull(r2)) {
+    //             idles1 /= r1.getAvailableProcessors();
+    //             idles2 /= r2.getAvailableProcessors();
+    //         }
+    //         return idles2 - idles1;
+    //     }
+    //
+    //     return (int) (a1 - a2);
+    // };
 }

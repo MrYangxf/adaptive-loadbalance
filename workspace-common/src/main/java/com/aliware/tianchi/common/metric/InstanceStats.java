@@ -58,9 +58,9 @@ public interface InstanceStats extends Serializable {
 
     // 指标查询
 
-    long getAvgResponseMs();
+    double getAvgResponseMs();
 
-    long getAvgResponseMs(String serviceId);
+    double getAvgResponseMs(String serviceId);
 
     long getThroughput();
 

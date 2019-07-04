@@ -15,7 +15,6 @@ import org.apache.dubbo.rpc.*;
  */
 @Activate(group = Constants.CONSUMER)
 public class TestClientFilter implements Filter {
-
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         LBStatistics.INSTANCE.queue(DubboUtil.getIpAddress(invoker));

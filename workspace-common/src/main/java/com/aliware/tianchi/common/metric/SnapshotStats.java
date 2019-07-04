@@ -42,7 +42,7 @@ public abstract class SnapshotStats implements Serializable {
         long successes = Long.parseLong(insts[5]);
         long failures = Long.parseLong(insts[6]);
         long rejections = Long.parseLong(insts[7]);
-        long avgResponseMs = Long.parseLong(insts[8]);
+        double avgResponseMs = Double.parseDouble(insts[8]);
         long throughput = Long.parseLong(insts[9]);
         ServerStats serverStats = new ServerStats(finalAddress);
         RuntimeInfo runInfo = isEmpty(groups[2]) || groups[2].equals("null") ?
@@ -88,7 +88,7 @@ public abstract class SnapshotStats implements Serializable {
             }
 
             @Override
-            public long getAvgResponseMs() {
+            public double getAvgResponseMs() {
                 return avgResponseMs;
             }
 
@@ -158,7 +158,7 @@ public abstract class SnapshotStats implements Serializable {
         throw new UnsupportedOperationException();
     }
 
-    public long getAvgResponseMs() {
+    public double getAvgResponseMs() {
         throw new UnsupportedOperationException();
     }
 

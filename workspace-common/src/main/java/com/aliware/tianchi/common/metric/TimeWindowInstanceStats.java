@@ -147,14 +147,14 @@ public class TimeWindowInstanceStats implements InstanceStats {
     }
 
     @Override
-    public long getAvgResponseMs() {
+    public double getAvgResponseMs() {
         long high = offset();
         return _getAvgResponseMs(high);
     }
 
 
     @Override
-    public long getAvgResponseMs(String serviceId) {
+    public double getAvgResponseMs(String serviceId) {
         if (!totalResponseMsCounterMap.containsKey(serviceId)) {
             return -1;
         }
@@ -302,7 +302,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
             }
 
             @Override
-            public long getAvgResponseMs() {
+            public double getAvgResponseMs() {
                 return _getAvgResponseMs(serviceId, offset);
             }
 
@@ -342,17 +342,17 @@ public class TimeWindowInstanceStats implements InstanceStats {
         return TimeUnit.MILLISECONDS.convert(start * timeInterval, timeUnit);
     }
 
-    private long _getAvgResponseMs(long high) {
+    private double _getAvgResponseMs(long high) {
         long low = high - windowSize;
         // avg = totalResponseMs / (successes + 1)
-        return sumMap(totalResponseMsCounterMap, low, high) / (sumMap(successesCounterMap, low, high) + 1);
+        return sumMap(totalResponseMsCounterMap, low, high) / (sumMap(successesCounterMap, low, high) + 0.1d);
     }
 
-    private long _getAvgResponseMs(String serviceId, long high) {
+    private double _getAvgResponseMs(String serviceId, long high) {
         long low = high - windowSize;
         // avg = totalResponseMs / (successes + 1)
         return getOrCreate(totalResponseMsCounterMap, serviceId).sum(low, high) /
-               (getOrCreate(successesCounterMap, serviceId).sum(low, high) + 1);
+               (getOrCreate(successesCounterMap, serviceId).sum(low, high) + 0.1d);
     }
 
     private long _getThroughput(long high) {

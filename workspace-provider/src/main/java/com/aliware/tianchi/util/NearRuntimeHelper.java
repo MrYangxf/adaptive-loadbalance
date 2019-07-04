@@ -12,6 +12,7 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -96,4 +97,39 @@ public class NearRuntimeHelper {
                                            conf.getTimeUnitOfStats(),
                                            conf.getCounterFactory());
     }
+
+    private volatile ConcurrentLinkedQueue<Integer> activeQueue = new ConcurrentLinkedQueue<>();
+
+    public void putActiveCount(int activeCount) {
+        activeQueue.offer(activeCount);
+    }
+
+    public synchronized int getActiveCount() {
+        ConcurrentLinkedQueue<Integer> queue = activeQueue;
+        activeQueue = new ConcurrentLinkedQueue<>();
+
+        int sum = 0, size = 0, min = Integer.MAX_VALUE, max = 0;
+        for (int ac : queue) {
+            if (ac == 0) {
+                continue;
+            }
+            sum += ac;
+            size++;
+            if (ac > max) max = ac;
+            if (ac < min) min = ac;
+        }
+
+        if (size > 10) {
+            sum -= max;
+            sum -= min;
+            size -= 2;
+        }
+
+        if (size == 0) {
+            return 0;
+        }
+
+        return sum / size;
+    }
+
 }

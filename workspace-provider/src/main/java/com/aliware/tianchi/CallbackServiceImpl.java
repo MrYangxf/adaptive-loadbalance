@@ -30,7 +30,7 @@ public class CallbackServiceImpl implements CallbackService {
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
     static Executor executor = Executors.newSingleThreadExecutor();
-    
+
     public CallbackServiceImpl() {
         Configuration conf = NearRuntimeHelper.INSTANCE.getConfiguration();
         Executors.newSingleThreadScheduledExecutor()
@@ -54,18 +54,28 @@ public class CallbackServiceImpl implements CallbackService {
     public static void updateAndNotify() {
         executor.execute(() -> _updateAndNotify(false));
     }
-    
+
     private static void _updateAndNotify(boolean clean) {
-        
+
         try {
             // update runtime info
-            NearRuntimeHelper.INSTANCE.updateRuntimeInfo();
+            NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
+            helper.updateRuntimeInfo();
 
             // notify 
             for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                 try {
-                    InstanceStats instanceStats = NearRuntimeHelper.INSTANCE.getInstanceStats();
+                    InstanceStats instanceStats = helper.getInstanceStats();
                     if (nonNull(instanceStats)) {
+                        int threads = instanceStats.getDomainThreads();
+                        int oldActiveCount = instanceStats.getActiveCount();
+                        int activeCount = helper.getActiveCount();
+                        if (activeCount < threads * .5) {
+                            activeCount = (int) (threads * .6);
+                        } else if (activeCount + 20 < oldActiveCount) {
+                            activeCount += 30;
+                        }
+                        instanceStats.setActiveCount(activeCount);
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
                         for (String serviceId : serviceIds) {
@@ -79,7 +89,7 @@ public class CallbackServiceImpl implements CallbackService {
             }
 
             if (clean) {
-                NearRuntimeHelper.INSTANCE.cleanStats();
+                helper.cleanStats();
             }
         } catch (Throwable throwable) {
             logger.error("schedule error", throwable);
