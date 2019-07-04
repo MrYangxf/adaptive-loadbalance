@@ -64,7 +64,7 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
             // double avgResponseMs = stats.getAvgResponseMs();
             // long successes = stats.getNumberOfSuccesses();
             // double weight = avgResponseMs * successes / millisSize;
-            double weight = stats.getActiveCount();
+            double weight = LBStatistics.INSTANCE.getWaits(address);
             if (weight == 0) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
