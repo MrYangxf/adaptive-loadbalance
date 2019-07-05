@@ -1,5 +1,9 @@
 package com.aliware.tianchi;
 
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
+
+import java.util.HashSet;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -9,6 +13,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
 
     private final AtomicLong counter = new AtomicLong();
+    private static final Logger logger = LoggerFactory.getLogger(StatsThreadPoolExecutor.class);
+
+    private final HashSet<Thread> threads = new HashSet<>();
 
     public StatsThreadPoolExecutor(int corePoolSize,
                                    int maximumPoolSize,
@@ -28,6 +35,7 @@ public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
     @Override
     protected void beforeExecute(Thread t, Runnable r) {
         super.beforeExecute(t, r);
+        // threads.add(t);
         counter.getAndIncrement();
     }
 

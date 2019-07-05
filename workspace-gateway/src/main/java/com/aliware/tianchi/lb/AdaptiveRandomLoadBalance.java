@@ -61,15 +61,15 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
             if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
-            // double avgResponseMs = stats.getAvgResponseMs();
-            // long successes = stats.getNumberOfSuccesses();
-            // double weight = avgResponseMs * successes / millisSize;
-            double weight = LBStatistics.INSTANCE.getWaits(address);
+            double avgResponseMs = stats.getAvgResponseMs();
+            long successes = stats.getNumberOfSuccesses();
+            double weight = avgResponseMs * successes / millisSize;
+            // double weight = LBStatistics.INSTANCE.getWaits(address);
             if (weight == 0) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
             total += weight;
-            weights[i] = total;
+            weights[i] = weight;
         }
 
         if ((ThreadLocalRandom.current().nextInt() % 511) == 0) {
@@ -98,6 +98,7 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
                     }
                     return invoker;
                 }
+                select -= weights[i];
             }
         }
 
