@@ -11,6 +11,7 @@ import org.apache.dubbo.rpc.service.CallbackService;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -81,6 +82,18 @@ public class CallbackServiceImpl implements CallbackService {
                         for (String serviceId : serviceIds) {
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             listener.receiveServerMsg(snapshot.toString());
+                            logger.info(new StringJoiner(", ")
+                                                .add("act=")
+                                                .add(String.valueOf(instanceStats.getActiveCount()))
+                                                .add("time=")
+                                                .add(String.valueOf(instanceStats.getTotalResponseMs(serviceId)))
+                                                .add("avg=")
+                                                .add(String.valueOf(instanceStats.getAvgResponseMs(serviceId)))
+                                                .add("suc=")
+                                                .add(String.valueOf(instanceStats.getNumberOfSuccesses(serviceId)))
+                                                .add("run=")
+                                                .add(String.valueOf(instanceStats.getServerStats().getRuntimeInfo()))
+                                                .toString());
                         }
                     }
                 } catch (Throwable t) {

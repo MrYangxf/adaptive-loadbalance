@@ -71,7 +71,8 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
 
-            if (waits < stats.getDomainThreads() * .5) {
+            if (waits < stats.getDomainThreads() * .5 &&
+                    ThreadLocalRandom.current().nextBoolean()) {
                 return invoker;
             }
             total += weight;
