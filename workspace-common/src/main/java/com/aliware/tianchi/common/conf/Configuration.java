@@ -47,6 +47,10 @@ public class Configuration implements Serializable {
 
     private SegmentCounterFactory counterFactory = () -> new SkipListCounter();
 
+    private boolean openAvgRT = false;
+    
+    private boolean openThroughput = false;
+
     /**
      * 开启运行时信息统计
      */
@@ -163,6 +167,23 @@ public class Configuration implements Serializable {
         return this;
     }
 
+    public boolean isOpenAvgRT() {
+        return openAvgRT;
+    }
+
+    public Configuration setOpenAvgRT(boolean openAvgRT) {
+        this.openAvgRT = openAvgRT;
+        return this;
+    }
+
+    public boolean isOpenThroughput() {
+        return openThroughput;
+    }
+
+    public Configuration setOpenThroughput(boolean openThroughput) {
+        this.openThroughput = openThroughput;
+        return this;
+    }
     // public static final Comparator<SnapshotStats> LOAD_FIRST = (o1, o2) -> {
     //     long a1 = o1.getAvgResponseMs(),
     //             a2 = o2.getAvgResponseMs();

@@ -72,21 +72,18 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
             }
 
             if (waits < stats.getDomainThreads() * .5) {
-                // weight = stats.getDomainThreads();
-                if (ThreadLocalRandom.current().nextBoolean()) {
-                    return invoker;
-                }
+                return invoker;
             }
             total += weight;
             weights[i] = weight;
         }
 
         if ((ThreadLocalRandom.current().nextInt() % 511) == 0) {
-            logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + 
+            logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) +
                         " weights=" + Arrays.toString(weights)
                        );
         }
-        
+
         if (total == 0) {
             return invokers.get(ThreadLocalRandom.current().nextInt(size));
         }

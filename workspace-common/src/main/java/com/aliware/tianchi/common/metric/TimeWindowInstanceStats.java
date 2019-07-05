@@ -1,10 +1,10 @@
 package com.aliware.tianchi.common.metric;
 
+import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.util.SegmentCounter;
 import com.aliware.tianchi.common.util.SegmentCounterFactory;
 import com.aliware.tianchi.common.util.SkipListCounter;
 
-import java.lang.management.ManagementFactory;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +27,8 @@ public class TimeWindowInstanceStats implements InstanceStats {
     private static final long DEFAULT_TIME_INTERVAL = TimeUnit.SECONDS.toNanos(1);
     private static final TimeUnit DEFAULT_TIME_UNIT = TimeUnit.SECONDS;
     private static final SegmentCounterFactory DEFAULT_COUNTER_FACTORY = SkipListCounter::new;
+
+    private final Configuration configuration;
 
     /**
      * 服务实例的地址 host:port
@@ -58,13 +60,16 @@ public class TimeWindowInstanceStats implements InstanceStats {
     private final Map<String, SegmentCounter> failuresCounterMap = new ConcurrentHashMap<>();
     private final Map<String, SegmentCounter> rejectionsCounterMap = new ConcurrentHashMap<>();
 
-    public TimeWindowInstanceStats(String address,
+    public TimeWindowInstanceStats(Configuration configuration,
+                                   String address,
                                    ServerStats serverStats,
                                    long windowSize,
                                    long timeInterval,
                                    TimeUnit timeUnit,
                                    SegmentCounterFactory counterFactory) {
+        checkNotNull(configuration, "configuration");
         checkNotNull(address, "address");
+        this.configuration = configuration;
         this.address = address;
         this.serverStats = serverStats;
         this.windowSize = windowSize > 0 ? windowSize : DEFAULT_WINDOW_SIZE;
@@ -120,7 +125,9 @@ public class TimeWindowInstanceStats implements InstanceStats {
     @Override
     public void success(String serviceId, long responseMs) {
         long offset = offset();
-        getOrCreate(totalResponseMsCounterMap, serviceId).add(offset, responseMs);
+        if (configuration.isOpenAvgRT()) {
+            getOrCreate(totalResponseMsCounterMap, serviceId).add(offset, responseMs);
+        }
         getOrCreate(successesCounterMap, serviceId).increment(offset);
     }
 
@@ -148,6 +155,10 @@ public class TimeWindowInstanceStats implements InstanceStats {
 
     @Override
     public double getAvgResponseMs() {
+        if (!configuration.isOpenAvgRT()) {
+            return -1;
+        }
+
         long high = offset();
         return _getAvgResponseMs(high);
     }
@@ -343,38 +354,56 @@ public class TimeWindowInstanceStats implements InstanceStats {
     }
 
     private double _getAvgResponseMs(long high) {
-        long low = high - windowSize;
-        // avg = totalResponseMs / (successes + 1)
-        return sumMap(totalResponseMsCounterMap, low, high) / (sumMap(successesCounterMap, low, high) + 0.1d);
+        if (configuration.isOpenAvgRT()) {
+            long low = high - windowSize;
+            // avg = totalResponseMs / (successes + 1)
+            return sumMap(totalResponseMsCounterMap, low, high) / (sumMap(successesCounterMap, low, high) + 0.1d);
+        }
+        return -1.0d;
     }
 
     private double _getAvgResponseMs(String serviceId, long high) {
-        long low = high - windowSize;
-        // avg = totalResponseMs / (successes + 1)
-        return getOrCreate(totalResponseMsCounterMap, serviceId).sum(low, high) /
-               (getOrCreate(successesCounterMap, serviceId).sum(low, high) + 0.1d);
+        if (configuration.isOpenAvgRT()) {
+            long low = high - windowSize;
+            // avg = totalResponseMs / (successes + 1)
+            return getOrCreate(totalResponseMsCounterMap, serviceId).sum(low, high) /
+                   (getOrCreate(successesCounterMap, serviceId).sum(low, high) + 0.1d);
+        }
+        return -1.0d;
     }
 
     private long _getThroughput(long high) {
-        long low = high - windowSize;
-        return sumMap(successesCounterMap, low, high) /
-               (TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit) + 1);
+        if (configuration.isOpenThroughput()) {
+            long low = high - windowSize;
+            return sumMap(successesCounterMap, low, high) /
+                   (TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit) + 1);
+        }
+        return -1L;
     }
 
     private long _getThroughput(String serviceId, long high) {
-        long low = high - windowSize;
-        return getOrCreate(successesCounterMap, serviceId).sum(low, high) /
-               (TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit) + 1);
+        if (configuration.isOpenThroughput()) {
+            long low = high - windowSize;
+            return getOrCreate(successesCounterMap, serviceId).sum(low, high) /
+                   (TimeUnit.SECONDS.convert(windowSize * timeInterval, timeUnit) + 1);
+        }
+        return -1L;
     }
 
     private long _getTotalResponseMs(long high) {
-        long low = high - windowSize;
-        return sumMap(totalResponseMsCounterMap, low, high);
+        if (configuration.isOpenAvgRT()) {
+            long low = high - windowSize;
+            return sumMap(totalResponseMsCounterMap, low, high);
+        }
+        return -1L;
     }
 
     private long _getTotalResponseMs(String serviceId, long high) {
-        long low = high - windowSize;
-        return getOrCreate(totalResponseMsCounterMap, serviceId).sum(low, high);
+        if (configuration.isOpenAvgRT()) {
+            long low = high - windowSize;
+            return getOrCreate(totalResponseMsCounterMap, serviceId).sum(low, high);
+        }
+        return -1L;
     }
 
     private long _getNumberOfRequests(long high) {

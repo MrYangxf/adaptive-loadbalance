@@ -90,7 +90,8 @@ public class NearRuntimeHelper {
     }
 
     private InstanceStats newStats(String address) {
-        return new TimeWindowInstanceStats(address,
+        return new TimeWindowInstanceStats(conf,
+                                           address,
                                            new ServerStats(address),
                                            conf.getWindowSizeOfStats(),
                                            conf.getTimeIntervalOfStats(),
