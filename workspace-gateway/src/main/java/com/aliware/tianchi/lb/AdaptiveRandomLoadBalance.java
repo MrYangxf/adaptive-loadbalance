@@ -58,15 +58,24 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
             Invoker<T> invoker = invokers.get(i);
             String address = DubboUtil.getIpAddress(invoker);
             SnapshotStats stats = instanceStatsMap.get(address);
+            int waits = LBStatistics.INSTANCE.getWaits(address);
             if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
-            double avgResponseMs = stats.getAvgResponseMs();
-            long successes = stats.getNumberOfSuccesses();
-            double weight = avgResponseMs * successes / millisSize;
+            // double avgResponseMs = stats.getAvgResponseMs();
+            // long successes = stats.getNumberOfSuccesses();
+            // double weight = avgResponseMs * successes / millisSize;
             // double weight = LBStatistics.INSTANCE.getWaits(address);
+            double weight = stats.getNumberOfSuccesses();
             if (weight == 0) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
+            }
+
+            if (waits < stats.getDomainThreads() * .5) {
+                // weight = stats.getDomainThreads();
+                if (ThreadLocalRandom.current().nextBoolean()) {
+                    return invoker;
+                }
             }
             total += weight;
             weights[i] = weight;
@@ -94,7 +103,8 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
                     if (waits > stats.getDomainThreads() * conf.getMaxRateOfWaitingRequests()) {
                         rm++;
                         weights[i] = 0;
-                        break; 
+                        total -= weights[i];
+                        break;
                     }
                     return invoker;
                 }

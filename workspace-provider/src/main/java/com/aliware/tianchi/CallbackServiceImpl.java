@@ -67,14 +67,14 @@ public class CallbackServiceImpl implements CallbackService {
                 try {
                     InstanceStats instanceStats = helper.getInstanceStats();
                     if (nonNull(instanceStats)) {
-                        int threads = instanceStats.getDomainThreads();
-                        int oldActiveCount = instanceStats.getActiveCount();
+                        // int threads = instanceStats.getDomainThreads();
+                        // int oldActiveCount = instanceStats.getActiveCount();
                         int activeCount = helper.getActiveCount();
-                        if (activeCount < threads * .5) {
-                            activeCount = (int) (threads * .6);
-                        } else if (activeCount + 20 < oldActiveCount) {
-                            activeCount += 30;
-                        }
+                        // if (activeCount < threads * .5) {
+                        //     activeCount = (int) (threads * .6);
+                        // } else if (activeCount + 20 < oldActiveCount) {
+                        //     activeCount += 30;
+                        // }
                         instanceStats.setActiveCount(activeCount);
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
