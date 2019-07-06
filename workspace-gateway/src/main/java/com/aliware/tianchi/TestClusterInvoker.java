@@ -50,7 +50,7 @@ public class TestClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 // check again
                 checkInvokers(copyInvokers, invocation);
             }
-            
+            logger.info("test cluster.");
             Invoker<T> invoker;
             try {
                 invoker = select(loadbalance, invocation, copyInvokers, invoked);
