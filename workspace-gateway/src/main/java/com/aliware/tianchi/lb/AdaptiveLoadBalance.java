@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
-import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author yangxf
@@ -154,7 +153,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
             netWaits = netWaits < 0 ? 0 : netWaits;
 
             double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / windowMillis;
-            if (waits > mc + netWaits) {
+            int threads = stats.getDomainThreads();
+            if (waits > threads * .5 &&
+                waits > mc + netWaits) {
                 continue;
             }
 
