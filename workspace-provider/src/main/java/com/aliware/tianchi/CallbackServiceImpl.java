@@ -3,12 +3,15 @@ package com.aliware.tianchi;
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.OSUtil;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
+import java.lang.management.ManagementFactory;
+import java.sql.Time;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -16,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
@@ -56,6 +60,8 @@ public class CallbackServiceImpl implements CallbackService {
         executor.execute(() -> _updateAndNotify(false));
     }
 
+    private volatile static long cpuTime = 0;
+    
     private static void _updateAndNotify(boolean clean) {
 
         try {
@@ -63,6 +69,10 @@ public class CallbackServiceImpl implements CallbackService {
             NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
             helper.updateRuntimeInfo();
 
+            long processCpuTime = OSUtil.getProcessCpuTime();
+            long cpus = TimeUnit.NANOSECONDS.toMillis(processCpuTime);
+            long s = cpus - cpuTime;
+            cpuTime = cpus;
             // notify 
             for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                 try {
@@ -88,6 +98,7 @@ public class CallbackServiceImpl implements CallbackService {
                                                 .add("time=" + instanceStats.getTotalResponseMs(serviceId))
                                                 .add("avg=" + instanceStats.getAvgResponseMs(serviceId))
                                                 .add("suc=" + instanceStats.getNumberOfSuccesses(serviceId))
+                                                .add("cpu=" + s)
                                                 .add("run=" + instanceStats.getServerStats().getRuntimeInfo())
                                                 .toString());
                         }
