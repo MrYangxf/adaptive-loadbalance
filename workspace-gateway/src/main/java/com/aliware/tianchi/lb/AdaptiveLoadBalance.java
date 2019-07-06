@@ -34,6 +34,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
     private final ThreadLocal<Queue<SnapshotStats>> localSmallQ;
 
     private final ThreadLocal<Queue<SnapshotStats>> localHeapQ;
+    
+    private final long windowMillis;
 
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
@@ -43,42 +45,14 @@ public class AdaptiveLoadBalance implements LoadBalance {
                     double a1 = o1.getAvgResponseMs(),
                                 a2 = o2.getAvgResponseMs();
 
-                    long s1 = o1.getNumberOfSuccesses(),
-                            s2 = o2.getNumberOfSuccesses();
-                    
-                    double v1 = s1 * a1 ;
-                    double v2 = s2 * a2 ;
-
-                    return Double.compare(v2, v1);
-                    // RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo();
-                    // RuntimeInfo r2 = o1.getServerStats().getRuntimeInfo();
-                    //
-                    // if (isNull(r1) || isNull(r2)) {
-                    //     double a1 = o1.getAvgResponseMs(),
-                    //             a2 = o2.getAvgResponseMs();
-                    //     if (a1 == a2) {
-                    //         int w1 = LBStatistics.INSTANCE.getWaits(o1.getAddress());
-                    //         int w2 = LBStatistics.INSTANCE.getWaits(o2.getAddress());
-                    //         int ac1 = o1.getActiveCount();
-                    //         int ac2 = o2.getActiveCount();
-                    //         int n1 = w1 - ac1 >>> 1;
-                    //         int n2 = w2 - ac2 >>> 1;
-                    //         int d1 = o1.getDomainThreads() - ac1 - (n1 > 0 ? n1 : 0);
-                    //         int d2 = o2.getDomainThreads() - ac2 - (n2 > 0 ? n2 : 0);
-                    //         return d2 - d1;
-                    //     }
-                    //
-                    //     return (int) (a1 - a2);
-                    // }
-                    //
-                    // double d1 = (r1.getProcessCpuLoad() * r1.getAvailableProcessors()) / o1.getActiveCount();
-                    // double d2 = (r2.getProcessCpuLoad() * r2.getAvailableProcessors()) / o2.getActiveCount();
-                    //
-                    // return Double.compare(d1, d2);
+                    return Double.compare(a1, a2);
                 };
         // Comparator<SnapshotStats> comparator = conf.getStatsComparator();
         localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
         localHeapQ = ThreadLocal.withInitial(() -> new PriorityQueue<>(comparator));
+
+        long size = conf.getWindowSizeOfStats() * conf.getTimeIntervalOfStats();
+        windowMillis = TimeUnit.MILLISECONDS.convert(size, conf.getTimeUnitOfStats());
     }
 
     @Override
@@ -113,7 +87,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 mostIdleIvk = invoker;
             }
 
-            if (waits > threads * conf.getMaxRateOfWaitingRequests() ||
+            double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / windowMillis;
+
+            if (waits > mc ||
                 conf.isOpenRuntimeStats() &&
                 runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
                 continue;
@@ -147,10 +123,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 break;
             }
 
-            if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
-                mask = (mask << 1) | mask;
-                continue;
-            }
+            // if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
+            //     mask = (mask << 1) | mask;
+            //     continue;
+            // }
 
             if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
             logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + stats.getAddress() +
