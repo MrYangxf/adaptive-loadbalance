@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author yangxf
@@ -105,8 +106,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
         if (queue.isEmpty()) {
             assert mostIdleIvk != null;
-            String address = mostIdleIvk.getUrl().getAddress();
+            String address = DubboUtil.getIpAddress(mostIdleIvk);
             SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
+            if (nonNull(stats))
             logger.info("queue is empty, mostIdleIvk " + address +
                         ", waits=" + lbStatistics.getWaits(address) +
                         ", active=" + stats.getActiveCount() +
