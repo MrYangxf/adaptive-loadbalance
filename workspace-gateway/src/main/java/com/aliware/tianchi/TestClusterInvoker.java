@@ -55,7 +55,7 @@ public class TestClusterInvoker<T> extends AbstractClusterInvoker<T> {
             try {
                 invoker = select(loadbalance, invocation, copyInvokers, invoked);
             } catch (RpcException e) {
-                return new RpcResult("");
+                return new RpcResult(0);
             }
 
             invoked.add(invoker);
