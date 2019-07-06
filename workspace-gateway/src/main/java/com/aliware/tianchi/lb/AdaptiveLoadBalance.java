@@ -34,7 +34,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
     private final ThreadLocal<Queue<SnapshotStats>> localSmallQ;
 
     private final ThreadLocal<Queue<SnapshotStats>> localHeapQ;
-    
+
     private final long windowMillis;
 
     public AdaptiveLoadBalance(Configuration conf) {
@@ -43,7 +43,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
         Comparator<SnapshotStats> comparator =
                 (o1, o2) -> {
                     double a1 = o1.getAvgResponseMs(),
-                                a2 = o2.getAvgResponseMs();
+                            a2 = o2.getAvgResponseMs();
 
                     return Double.compare(a1, a2);
                 };
@@ -58,6 +58,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         int size = invokers.size();
+
+        if (ThreadLocalRandom.current().nextInt() % (size + 1) == 0) {
+            return invokers.get(ThreadLocalRandom.current().nextInt(size));
+        }
 
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
         Map<SnapshotStats, Invoker<T>> mapping = new HashMap<>();
@@ -129,18 +133,18 @@ public class AdaptiveLoadBalance implements LoadBalance {
             // }
 
             if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
-            logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + stats.getAddress() +
-                        ", waits=" + lbStatistics.getWaits(stats.getAddress()) +
-                        ", active=" + stats.getActiveCount() +
-                        ", threads=" + stats.getDomainThreads() +
-                        ", avg=" + stats.getAvgResponseMs() +
-                        ", suc=" + stats.getNumberOfSuccesses() +
-                        ", fai=" + stats.getNumberOfFailures() +
-                        ", tpt=" + stats.getThroughput() +
-                        (conf.isOpenRuntimeStats() ?
-                                ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
-                       );
-            
+                logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + stats.getAddress() +
+                            ", waits=" + lbStatistics.getWaits(stats.getAddress()) +
+                            ", active=" + stats.getActiveCount() +
+                            ", threads=" + stats.getDomainThreads() +
+                            ", avg=" + stats.getAvgResponseMs() +
+                            ", suc=" + stats.getNumberOfSuccesses() +
+                            ", fai=" + stats.getNumberOfFailures() +
+                            ", tpt=" + stats.getThroughput() +
+                            (conf.isOpenRuntimeStats() ?
+                                    ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
+                           );
+
             queue.clear();
             return mapping.get(stats);
         }
