@@ -83,16 +83,12 @@ public class CallbackServiceImpl implements CallbackService {
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             listener.receiveServerMsg(snapshot.toString());
                             logger.info(new StringJoiner(", ")
-                                                .add("act=")
-                                                .add(String.valueOf(instanceStats.getActiveCount()))
-                                                .add("time=")
-                                                .add(String.valueOf(instanceStats.getTotalResponseMs(serviceId)))
-                                                .add("avg=")
-                                                .add(String.valueOf(instanceStats.getAvgResponseMs(serviceId)))
-                                                .add("suc=")
-                                                .add(String.valueOf(instanceStats.getNumberOfSuccesses(serviceId)))
-                                                .add("run=")
-                                                .add(String.valueOf(instanceStats.getServerStats().getRuntimeInfo()))
+                                                .add("" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()))
+                                                .add("act=" + instanceStats.getActiveCount())
+                                                .add("time=" + instanceStats.getTotalResponseMs(serviceId))
+                                                .add("avg=" + instanceStats.getAvgResponseMs(serviceId))
+                                                .add("suc=" + instanceStats.getNumberOfSuccesses(serviceId))
+                                                .add("run=" + instanceStats.getServerStats().getRuntimeInfo())
                                                 .toString());
                         }
                     }
