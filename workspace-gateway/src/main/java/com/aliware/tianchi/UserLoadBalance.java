@@ -24,7 +24,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
  */
 public class UserLoadBalance implements LoadBalance {
 
-    public static final QueuedLoadBalance rule = new QueuedLoadBalance(new Configuration());
+    public static final LoadBalance rule = new AdaptiveRandomLoadBalance(new Configuration());
 
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
