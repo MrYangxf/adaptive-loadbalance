@@ -34,7 +34,7 @@ public class CallbackListenerImpl implements CallbackListener {
 
                 if (serviceId.contains("hash")) {
                     logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " UPDATE " + address +
-                                ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
+                                // ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
                                 ", active=" + stats.getActiveCount() +
                                 ", threads=" + stats.getDomainThreads() +
                                 ", avg=" + stats.getAvgResponseMs() +
