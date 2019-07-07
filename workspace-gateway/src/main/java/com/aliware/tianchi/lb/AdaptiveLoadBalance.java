@@ -134,6 +134,19 @@ public class AdaptiveLoadBalance implements LoadBalance {
             // }
 
             String address = stats.getAddress();
+
+            long waits = lbStatistics.getWaits(address);
+            int activeCount = stats.getActiveCount();
+            long netWaits = (waits - activeCount) / 2;
+            netWaits = netWaits < 0 ? 0 : netWaits;
+
+            double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / windowMillis;
+            int threads = stats.getDomainThreads();
+            if (waits > threads * .7 &&
+                waits > mc + netWaits) {
+                continue;
+            }
+
             if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
                 logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + address +
                             ", waits=" + lbStatistics.getWaits(address) +
@@ -146,19 +159,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
                             (conf.isOpenRuntimeStats() ?
                                     ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
                            );
-
-            long waits = lbStatistics.getWaits(address);
-            int activeCount = stats.getActiveCount();
-            long netWaits = (waits - activeCount) / 2;
-            netWaits = netWaits < 0 ? 0 : netWaits;
-
-            double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / windowMillis;
-            int threads = stats.getDomainThreads();
-            if (waits > threads * .5 &&
-                waits > mc + netWaits) {
-                continue;
-            }
-
             queue.clear();
             return mapping.get(address);
         }
