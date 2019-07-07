@@ -96,7 +96,6 @@ public class QueuedLoadBalance implements LoadBalance {
                     }
 
                     String address = stats.getAddress();
-
                     int waits = waitMap.getOrDefault(address, 0);
                     int activeCount = stats.getActiveCount();
                     long netWaits = (waits - activeCount) / 2;
@@ -110,7 +109,6 @@ public class QueuedLoadBalance implements LoadBalance {
                         continue;
                     }
 
-                    waitMap.put(address, ++waits);
                     if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
                         logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + address +
                                     ", waits=" + waits +
@@ -128,11 +126,14 @@ public class QueuedLoadBalance implements LoadBalance {
                     return mapping.get(address);
                 }
 
-                cond.await(3000, TimeUnit.MILLISECONDS);
+                if (!cond.await(3000, TimeUnit.MILLISECONDS)) {
+                    break;
+                }
                 queue = tempQueue;
                 tempQueue = newQueue(size);
             }
 
+            // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
         } catch (InterruptedException e) {
             // 
         } finally {
@@ -140,6 +141,16 @@ public class QueuedLoadBalance implements LoadBalance {
         }
 
         throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
+    }
+
+    public void queue(String address) {
+        lock.lock();
+        try {
+            int waits = waitMap.getOrDefault(address, 0);
+            waitMap.put(address, ++waits);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void dequeue(String address) {

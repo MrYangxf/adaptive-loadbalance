@@ -17,6 +17,7 @@ public class TestClientFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         // LBStatistics.INSTANCE.queue(DubboUtil.getIpAddress(invoker));
+        UserLoadBalance.rule.queue(DubboUtil.getIpAddress(invoker));
         return invoker.invoke(invocation);
     }
 
