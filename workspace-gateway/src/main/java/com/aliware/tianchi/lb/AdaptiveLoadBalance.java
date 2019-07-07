@@ -142,7 +142,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
             double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / windowMillis;
             int threads = stats.getDomainThreads();
-            if (waits > threads * .7 &&
+            if (waits > threads * .8 &&
                 waits > mc + netWaits) {
                 continue;
             }
