@@ -29,17 +29,8 @@ public class TestServerFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
         invocation.getAttachments().put(START_MILLIS, String.valueOf(System.currentTimeMillis()));
-        // String serviceId = DubboUtil.getServiceId(invoker, invocation);
-        // InstanceStats stats = NearRuntimeHelper.INSTANCE.getOrCreateInstanceStats(invoker);
-        // stats.success(serviceId, 1);
         return invoker.invoke(invocation);
     }
-
-    AtomicBoolean lock = new AtomicBoolean();
-
-    volatile SnapshotStats previous;
-
-    AtomicLong counter = new AtomicLong();
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
@@ -58,27 +49,6 @@ public class TestServerFilter implements Filter {
             stats.success(serviceId, duration);
         }
 
-        int threads = invoker.getUrl().getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
-        if ((counter.getAndIncrement() % (threads << 1)) == 0) {
-            stats.setActiveCount(helper.getActiveCount());
-            SnapshotStats snapshot = stats.snapshot(serviceId);
-
-            if (isNull(previous)) {
-                snapshot.setWeight(snapshot.getDomainThreads());
-                CallbackServiceImpl.notifyStats(snapshot);
-                previous = snapshot;
-            } else {
-                double avgRT = snapshot.getAvgResponseMs();
-                double prevAvgRT = previous.getAvgResponseMs();
-                if (MathUtil.isApproximate(avgRT, prevAvgRT, 5) && avgRT > prevAvgRT + 1) {
-                    CallbackServiceImpl.notifyStats(previous);
-                } else {
-                    CallbackServiceImpl.notifyStats(snapshot);
-                    previous = snapshot;
-                }
-            }
-
-        }
 
         return result;
     }

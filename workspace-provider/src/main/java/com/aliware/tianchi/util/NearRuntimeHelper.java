@@ -109,7 +109,7 @@ public class NearRuntimeHelper {
         //                                     conf.getCounterFactory());
         // stats.setDomainThreads(nThreads);
         // return stats;
-        return new CountWindowInstanceStats(address, new ServerStats(address), nThreads * 2);
+        return new CountWindowInstanceStats(address, new ServerStats(address), nThreads * 5);
     }
 
     private volatile ConcurrentLinkedQueue<Integer> activeQueue = new ConcurrentLinkedQueue<>();

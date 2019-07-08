@@ -34,11 +34,11 @@ public class CallbackServiceImpl implements CallbackService {
     public CallbackServiceImpl() {
         NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
         Configuration conf = helper.getConfiguration();
-        // helper.getScheduledExecutor()
-        //       .scheduleWithFixedDelay(() -> _updateAndNotify(true),
-        //                               conf.getStatsPushInitDelayMs(),
-        //                               conf.getStatsPushDelayMs(),
-        //                               TimeUnit.MILLISECONDS);
+        helper.getScheduledExecutor()
+              .scheduleWithFixedDelay(() -> _updateAndNotify(true),
+                                      conf.getStatsPushInitDelayMs(),
+                                      conf.getStatsPushDelayMs(),
+                                      TimeUnit.MILLISECONDS);
     }
 
     /**
