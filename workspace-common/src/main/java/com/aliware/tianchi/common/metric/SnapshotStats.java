@@ -4,9 +4,7 @@ import com.aliware.tianchi.common.util.RuntimeInfo;
 
 import java.io.Serializable;
 
-import static com.aliware.tianchi.common.util.ObjectUtil.checkNotEmpty;
-import static com.aliware.tianchi.common.util.ObjectUtil.defaultIfEmpty;
-import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
+import static com.aliware.tianchi.common.util.ObjectUtil.*;
 
 /**
  * @author yangxf
@@ -17,10 +15,19 @@ public abstract class SnapshotStats implements Serializable {
     private static final String SEPARATOR = "_";
     private static final String GROUP_SEPARATOR = "@";
 
+    private volatile double weight;
+
+    public SnapshotStats() {
+    }
+    
+    public SnapshotStats(double weight) {
+        this.weight = weight;
+    }
+
     public static SnapshotStats fromString(String text) {
         return fromString(null, text);
     }
-    
+
     public static SnapshotStats fromString(String address, String text) {
         checkNotEmpty(text, "text");
 
@@ -31,12 +38,12 @@ public abstract class SnapshotStats implements Serializable {
 
         String serviceId = groups[0];
         String[] insts = groups[1].split(SEPARATOR);
-        if (insts.length != 10) {
+        if (insts.length != 11) {
             throwIllegalArg();
         }
         String finalAddress = defaultIfEmpty(address, insts[0]);
         long startTimeMs = Long.parseLong(insts[1]);
-        long endTimeMs = Long.parseLong(insts[2]);
+        long intervalTimeMs = Long.parseLong(insts[2]);
         int threads = Integer.parseInt(insts[3]);
         int activeCount = Integer.parseInt(insts[4]);
         long successes = Long.parseLong(insts[5]);
@@ -44,12 +51,13 @@ public abstract class SnapshotStats implements Serializable {
         long rejections = Long.parseLong(insts[7]);
         double avgResponseMs = Double.parseDouble(insts[8]);
         long throughput = Long.parseLong(insts[9]);
+        double weight = Double.parseDouble(insts[10]);
         ServerStats serverStats = new ServerStats(finalAddress);
         RuntimeInfo runInfo = isEmpty(groups[2]) || groups[2].equals("null") ?
                 null : RuntimeInfo.fromString(groups[2]);
         serverStats.setRuntimeInfo(runInfo);
 
-        return new SnapshotStats() {
+        return new SnapshotStats(weight) {
             private static final long serialVersionUID = 6197862269143364929L;
 
             @Override
@@ -63,8 +71,8 @@ public abstract class SnapshotStats implements Serializable {
             }
 
             @Override
-            public long endTimeMs() {
-                return endTimeMs;
+            public long intervalTimeMs() {
+                return intervalTimeMs;
             }
 
             @Override
@@ -119,15 +127,24 @@ public abstract class SnapshotStats implements Serializable {
         return getServiceId() + GROUP_SEPARATOR
                + getAddress() + SEPARATOR
                + startTimeMs() + SEPARATOR
-               + endTimeMs() + SEPARATOR
+               + intervalTimeMs() + SEPARATOR
                + getDomainThreads() + SEPARATOR
                + getActiveCount() + SEPARATOR
                + getNumberOfSuccesses() + SEPARATOR
                + getNumberOfFailures() + SEPARATOR
                + getNumberOfRejections() + SEPARATOR
                + getAvgResponseMs() + SEPARATOR
-               + getThroughput()
+               + getThroughput() + SEPARATOR
+               + getWeight()
                + GROUP_SEPARATOR + getServerStats().getRuntimeInfo();
+    }
+
+    public void setWeight(double weight) {
+        this.weight = weight;
+    }
+
+    public double getWeight() {
+        return weight;
     }
 
     public String getAddress() {
@@ -142,7 +159,7 @@ public abstract class SnapshotStats implements Serializable {
         throw new UnsupportedOperationException();
     }
 
-    public long endTimeMs() {
+    public long intervalTimeMs() {
         throw new UnsupportedOperationException();
     }
 

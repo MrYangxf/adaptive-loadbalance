@@ -140,9 +140,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
             long netWaits = (waits - activeCount) / 2;
             netWaits = netWaits < 0 ? 0 : netWaits;
 
-            double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / windowMillis;
+            double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / stats.intervalTimeMs();
             int threads = stats.getDomainThreads();
-            if (waits > threads * .8 &&
+            if (activeCount > threads * .5 &&
                 waits > mc + netWaits) {
                 continue;
             }

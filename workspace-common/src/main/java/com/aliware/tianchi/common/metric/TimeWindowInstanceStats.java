@@ -293,8 +293,8 @@ public class TimeWindowInstanceStats implements InstanceStats {
             }
 
             @Override
-            public long endTimeMs() {
-                return TimeUnit.MILLISECONDS.convert(offset * timeInterval, timeUnit);
+            public long intervalTimeMs() {
+                return TimeUnit.MILLISECONDS.convert(timeInterval * windowSize, timeUnit);
             }
 
             @Override

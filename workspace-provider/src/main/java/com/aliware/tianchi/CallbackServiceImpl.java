@@ -10,16 +10,11 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
-import java.lang.management.ManagementFactory;
-import java.sql.Time;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.LockSupport;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
@@ -32,17 +27,18 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class CallbackServiceImpl implements CallbackService {
 
+    static final long START = System.nanoTime();
+
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
-    static Executor executor = Executors.newSingleThreadExecutor();
-
     public CallbackServiceImpl() {
-        Configuration conf = NearRuntimeHelper.INSTANCE.getConfiguration();
-        Executors.newSingleThreadScheduledExecutor()
-                 .scheduleWithFixedDelay(() -> _updateAndNotify(true),
-                                         conf.getStatsPushInitDelayMs(),
-                                         conf.getStatsPushDelayMs(),
-                                         TimeUnit.MILLISECONDS);
+        NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
+        Configuration conf = helper.getConfiguration();
+        // helper.getScheduledExecutor()
+        //       .scheduleWithFixedDelay(() -> _updateAndNotify(true),
+        //                               conf.getStatsPushInitDelayMs(),
+        //                               conf.getStatsPushDelayMs(),
+        //                               TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -56,12 +52,46 @@ public class CallbackServiceImpl implements CallbackService {
         listeners.put(key, listener);
     }
 
-    public static void updateAndNotify() {
-        executor.execute(() -> _updateAndNotify(false));
+    public static void notifyStats(SnapshotStats snapshot) {
+        NearRuntimeHelper.INSTANCE
+                .getScheduledExecutor()
+                .schedule(() -> _notifyStats(snapshot), 0, TimeUnit.MILLISECONDS);
+    }
+
+    private static void _notifyStats(SnapshotStats snapshot) {
+        try {
+            NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
+            helper.updateRuntimeInfo();
+            long processCpuTime = OSUtil.getProcessCpuTime();
+            long cpus = TimeUnit.NANOSECONDS.toMillis(processCpuTime);
+            long s = cpus - cpuTime;
+            cpuTime = cpus;
+            // notify 
+            for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+                try {
+                    CallbackListener listener = entry.getValue();
+                    listener.receiveServerMsg(snapshot.toString());
+                    logger.info(new StringJoiner(", ")
+                                        .add("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
+                                        .add("act=" + snapshot.getActiveCount())
+                                        .add("ms=" + snapshot.intervalTimeMs())
+                                        .add("time=" + snapshot.getAvgResponseMs() * snapshot.getNumberOfSuccesses())
+                                        .add("avg=" + snapshot.getAvgResponseMs())
+                                        .add("suc=" + snapshot.getNumberOfSuccesses())
+                                        .add("cpu=" + s)
+                                        .add("run=" + snapshot.getServerStats().getRuntimeInfo())
+                                        .toString());
+                } catch (Throwable t) {
+                    logger.error("send error", t);
+                }
+            }
+        } catch (Throwable throwable) {
+            logger.error("schedule error", throwable);
+        }
     }
 
     private volatile static long cpuTime = 0;
-    
+
     private static void _updateAndNotify(boolean clean) {
 
         try {
@@ -93,13 +123,13 @@ public class CallbackServiceImpl implements CallbackService {
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             listener.receiveServerMsg(snapshot.toString());
                             logger.info(new StringJoiner(", ")
-                                                .add("" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()))
-                                                .add("act=" + instanceStats.getActiveCount())
-                                                .add("time=" + instanceStats.getTotalResponseMs(serviceId))
-                                                .add("avg=" + instanceStats.getAvgResponseMs(serviceId))
-                                                .add("suc=" + instanceStats.getNumberOfSuccesses(serviceId))
+                                                .add("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
+                                                .add("act=" + snapshot.getActiveCount())
+                                                .add("time=" + snapshot.getAvgResponseMs() * snapshot.getNumberOfSuccesses())
+                                                .add("avg=" + snapshot.getAvgResponseMs())
+                                                .add("suc=" + snapshot.getNumberOfSuccesses())
                                                 .add("cpu=" + s)
-                                                .add("run=" + instanceStats.getServerStats().getRuntimeInfo())
+                                                .add("run=" + snapshot.getServerStats().getRuntimeInfo())
                                                 .toString());
                         }
                     }

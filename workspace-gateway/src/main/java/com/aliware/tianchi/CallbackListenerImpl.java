@@ -22,7 +22,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 public class CallbackListenerImpl implements CallbackListener {
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackListenerImpl.class);
-
+    static final long START = System.nanoTime();
     @Override
     public void receiveServerMsg(String msg) {
         if (nonEmpty(msg)) {
@@ -33,9 +33,11 @@ public class CallbackListenerImpl implements CallbackListener {
                 LBStatistics.INSTANCE.updateInstanceStats(serviceId, address, stats);
 
                 if (serviceId.contains("hash")) {
-                    logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " UPDATE " + address +
+                    logger.info("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START) + 
+                                " UPDATE " + address +
                                 // ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
                                 ", active=" + stats.getActiveCount() +
+                                ", ms=" + stats.intervalTimeMs() +
                                 ", threads=" + stats.getDomainThreads() +
                                 ", avg=" + stats.getAvgResponseMs() +
                                 ", suc=" + stats.getNumberOfSuccesses() +

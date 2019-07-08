@@ -28,15 +28,9 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
 
     private final Configuration conf;
 
-    private final long millisSize;
-
     public AdaptiveRandomLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
         this.conf = conf;
-        long windowSize = conf.getWindowSizeOfStats();
-        long timeInterval = conf.getTimeIntervalOfStats();
-        TimeUnit timeUnit = conf.getTimeUnitOfStats();
-        millisSize = TimeUnit.MILLISECONDS.convert(windowSize * timeInterval, timeUnit);
     }
 
     @Override
@@ -62,11 +56,11 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
             if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
-            // double avgResponseMs = stats.getAvgResponseMs();
-            // long successes = stats.getNumberOfSuccesses();
-            // double weight = avgResponseMs * successes / millisSize;
+            double avgResponseMs = stats.getAvgResponseMs();
+            long successes = stats.getNumberOfSuccesses();
+            double weight = avgResponseMs * successes / stats.intervalTimeMs();
             // double weight = LBStatistics.INSTANCE.getWaits(address);
-            double weight = stats.getNumberOfSuccesses();
+            // double weight = stats.getNumberOfSuccesses();
             if (weight == 0) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }

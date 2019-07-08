@@ -1,9 +1,9 @@
 package com.aliware.tianchi.util;
 
 import com.aliware.tianchi.common.conf.Configuration;
+import com.aliware.tianchi.common.metric.CountWindowInstanceStats;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.ServerStats;
-import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import org.apache.dubbo.common.Constants;
@@ -13,6 +13,8 @@ import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -34,9 +36,16 @@ public class NearRuntimeHelper {
 
     private volatile RuntimeInfo current;
 
+    private final ScheduledExecutorService scheduledExecutor;
+
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
         this.conf = conf;
+        scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+    }
+
+    public ScheduledExecutorService getScheduledExecutor() {
+        return scheduledExecutor;
     }
 
     public void updateRuntimeInfo() {
@@ -68,9 +77,9 @@ public class NearRuntimeHelper {
         if (stats == null) {
             synchronized (this) {
                 if (stats == null) {
-                    InstanceStats newStats = newStats(DubboUtil.getIpAddress(invoker));
                     String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
                     int nThreads = Integer.parseInt(nThreadsString);
+                    InstanceStats newStats = newStats(DubboUtil.getIpAddress(invoker), nThreads);
                     newStats.setDomainThreads(nThreads);
                     stats = newStats;
                 }
@@ -89,14 +98,18 @@ public class NearRuntimeHelper {
         return conf;
     }
 
-    private InstanceStats newStats(String address) {
-        return new TimeWindowInstanceStats(conf,
-                                           address,
-                                           new ServerStats(address),
-                                           conf.getWindowSizeOfStats(),
-                                           conf.getTimeIntervalOfStats(),
-                                           conf.getTimeUnitOfStats(),
-                                           conf.getCounterFactory());
+    private InstanceStats newStats(String address, int nThreads) {
+        // TimeWindowInstanceStats stats =
+        //         new TimeWindowInstanceStats(conf,
+        //                                     address,
+        //                                     new ServerStats(address),
+        //                                     conf.getWindowSizeOfStats(),
+        //                                     conf.getTimeIntervalOfStats(),
+        //                                     conf.getTimeUnitOfStats(),
+        //                                     conf.getCounterFactory());
+        // stats.setDomainThreads(nThreads);
+        // return stats;
+        return new CountWindowInstanceStats(address, new ServerStats(address), nThreads * 2);
     }
 
     private volatile ConcurrentLinkedQueue<Integer> activeQueue = new ConcurrentLinkedQueue<>();
@@ -132,5 +145,4 @@ public class NearRuntimeHelper {
 
         return sum / size;
     }
-
 }
