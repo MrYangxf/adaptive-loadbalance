@@ -4,6 +4,7 @@ import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.CountWindowInstanceStats;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.ServerStats;
+import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import org.apache.dubbo.common.Constants;
@@ -79,9 +80,7 @@ public class NearRuntimeHelper {
                 if (stats == null) {
                     String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
                     int nThreads = Integer.parseInt(nThreadsString);
-                    InstanceStats newStats = newStats(DubboUtil.getIpAddress(invoker), nThreads);
-                    newStats.setDomainThreads(nThreads);
-                    stats = newStats;
+                    stats = newStats(DubboUtil.getIpAddress(invoker), nThreads);
                 }
             }
         }
@@ -99,17 +98,17 @@ public class NearRuntimeHelper {
     }
 
     private InstanceStats newStats(String address, int nThreads) {
-        // TimeWindowInstanceStats stats =
-        //         new TimeWindowInstanceStats(conf,
-        //                                     address,
-        //                                     new ServerStats(address),
-        //                                     conf.getWindowSizeOfStats(),
-        //                                     conf.getTimeIntervalOfStats(),
-        //                                     conf.getTimeUnitOfStats(),
-        //                                     conf.getCounterFactory());
-        // stats.setDomainThreads(nThreads);
-        // return stats;
-        return new CountWindowInstanceStats(address, new ServerStats(address), nThreads * 5);
+        TimeWindowInstanceStats stats =
+                new TimeWindowInstanceStats(conf,
+                                            address,
+                                            new ServerStats(address),
+                                            conf.getWindowSizeOfStats(),
+                                            conf.getTimeIntervalOfStats(),
+                                            conf.getTimeUnitOfStats(),
+                                            conf.getCounterFactory());
+        stats.setDomainThreads(nThreads);
+        return stats;
+        // return new CountWindowInstanceStats(address, new ServerStats(address), nThreads * 5);
     }
 
     private volatile ConcurrentLinkedQueue<Integer> activeQueue = new ConcurrentLinkedQueue<>();
