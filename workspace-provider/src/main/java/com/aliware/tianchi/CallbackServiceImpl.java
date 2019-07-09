@@ -138,7 +138,9 @@ public class CallbackServiceImpl implements CallbackService {
             } else if (other > weightCache) {
                 weight = other;
                 weightCache = weight;
-            }
+            } else {
+                weight = weightCache * 1.5;
+            } 
 
             logger.info(new StringJoiner(", ")
                                 .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
@@ -159,11 +161,11 @@ public class CallbackServiceImpl implements CallbackService {
                         for (String serviceId : serviceIds) {
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             snapshot.setEpoch(epoch);
-                            int threads = snapshot.getDomainThreads();
-                            if (weight < threads / 2) {
-                                weight = threads * .9;
-                                weightCache = other;
-                            }
+                            // int threads = snapshot.getDomainThreads();
+                            // if (weight < threads / 2) {
+                            //     weight = threads * .9;
+                            //     weightCache = other;
+                            // }
                             snapshot.setWeight(weight);
                             listener.receiveServerMsg(snapshot.toString());
                             logger.info(new StringJoiner(", ")
