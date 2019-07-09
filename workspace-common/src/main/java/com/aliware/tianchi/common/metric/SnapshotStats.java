@@ -3,6 +3,7 @@ package com.aliware.tianchi.common.metric;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 
 import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.*;
 
@@ -16,12 +17,18 @@ public abstract class SnapshotStats implements Serializable {
     private static final String GROUP_SEPARATOR = "@";
 
     private volatile double weight;
+    
+    private volatile long epoch;
+
+    private AtomicLong token = new AtomicLong();
 
     public SnapshotStats() {
     }
     
-    public SnapshotStats(double weight) {
+    public SnapshotStats(double weight, long epoch) {
         this.weight = weight;
+        this.epoch = epoch;
+        token.lazySet((long) weight + 1L);
     }
 
     public static SnapshotStats fromString(String text) {
@@ -38,7 +45,7 @@ public abstract class SnapshotStats implements Serializable {
 
         String serviceId = groups[0];
         String[] insts = groups[1].split(SEPARATOR);
-        if (insts.length != 11) {
+        if (insts.length != 12) {
             throwIllegalArg();
         }
         String finalAddress = defaultIfEmpty(address, insts[0]);
@@ -52,12 +59,13 @@ public abstract class SnapshotStats implements Serializable {
         double avgResponseMs = Double.parseDouble(insts[8]);
         long throughput = Long.parseLong(insts[9]);
         double weight = Double.parseDouble(insts[10]);
+        long epoch = Long.parseLong(insts[11]);
         ServerStats serverStats = new ServerStats(finalAddress);
         RuntimeInfo runInfo = isEmpty(groups[2]) || groups[2].equals("null") ?
                 null : RuntimeInfo.fromString(groups[2]);
         serverStats.setRuntimeInfo(runInfo);
 
-        return new SnapshotStats(weight) {
+        return new SnapshotStats(weight, epoch) {
             private static final long serialVersionUID = 6197862269143364929L;
 
             @Override
@@ -135,8 +143,30 @@ public abstract class SnapshotStats implements Serializable {
                + getNumberOfRejections() + SEPARATOR
                + getAvgResponseMs() + SEPARATOR
                + getThroughput() + SEPARATOR
-               + getWeight()
+               + getWeight() + SEPARATOR
+               + getEpoch()
                + GROUP_SEPARATOR + getServerStats().getRuntimeInfo();
+    }
+
+    public boolean getToken() {
+        long t = token.decrementAndGet();
+        if (t >= 0) {
+            return true;
+        }
+        token.incrementAndGet();
+        return false;
+    }
+    
+    public void releaseToken() {
+        token.incrementAndGet();
+    }
+    
+    public long getEpoch() {
+        return epoch;
+    }
+
+    public void setEpoch(long epoch) {
+        this.epoch = epoch;
     }
 
     public void setWeight(double weight) {

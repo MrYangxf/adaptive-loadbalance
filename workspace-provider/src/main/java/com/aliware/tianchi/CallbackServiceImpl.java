@@ -3,19 +3,30 @@ package com.aliware.tianchi;
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.MathUtil;
 import com.aliware.tianchi.common.util.OSUtil;
 import com.aliware.tianchi.util.NearRuntimeHelper;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.StringJoiner;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReentrantLock;
 
+import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
@@ -46,6 +57,8 @@ public class CallbackServiceImpl implements CallbackService {
      * value: callback listener
      */
     private static final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
+
+    private static final AtomicLong EPOCH = new AtomicLong();
 
     @Override
     public void addListener(String key, CallbackListener listener) {
@@ -92,9 +105,14 @@ public class CallbackServiceImpl implements CallbackService {
 
     private volatile static long cpuTime = 0;
 
+    private volatile static double weightCache;
+
     private static void _updateAndNotify(boolean clean) {
 
         try {
+
+            long epoch = EPOCH.getAndIncrement();
+
             // update runtime info
             NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
             helper.updateRuntimeInfo();
@@ -103,34 +121,63 @@ public class CallbackServiceImpl implements CallbackService {
             long cpus = TimeUnit.NANOSECONDS.toMillis(processCpuTime);
             long s = cpus - cpuTime;
             cpuTime = cpus;
+
+
+            TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
+                                                                        .getAdaptiveExtension();
+
+            TestThreadPool.ThreadStats threadStats = threadPool.getThreadStats();
+            int qwaits = threadStats.queues(), sem = threadStats.waits(), other = threadStats.works();
+
+            double weight = 0;
+            if (sem > 0) {
+                weight = other;
+                weightCache = weight;
+            } else if (MathUtil.isApproximate(other, weightCache, 10)) {
+                weight = weightCache;
+            } else if (other > weightCache) {
+                weight = other;
+                weightCache = weight;
+            }
+
+            logger.info(new StringJoiner(", ")
+                                .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
+                                .add("qwaits=" + qwaits)
+                                .add("sem=" + sem)
+                                .add("other=" + other)
+                                .toString());
+
             // notify 
             for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                 try {
                     InstanceStats instanceStats = helper.getInstanceStats();
                     if (nonNull(instanceStats)) {
-                        // int threads = instanceStats.getDomainThreads();
-                        // int oldActiveCount = instanceStats.getActiveCount();
                         int activeCount = helper.getActiveCount();
-                        // if (activeCount < threads * .5) {
-                        //     activeCount = (int) (threads * .6);
-                        // } else if (activeCount + 20 < oldActiveCount) {
-                        //     activeCount += 30;
-                        // }
                         instanceStats.setActiveCount(activeCount);
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
                         for (String serviceId : serviceIds) {
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
+                            snapshot.setEpoch(epoch);
+                            int threads = snapshot.getDomainThreads();
+                            if (weight < threads / 2) {
+                                weight = threads * .9;
+                                weightCache = other;
+                            }
+                            snapshot.setWeight(weight);
                             listener.receiveServerMsg(snapshot.toString());
                             logger.info(new StringJoiner(", ")
                                                 .add("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
                                                 .add("act=" + snapshot.getActiveCount())
+                                                .add("w=" + weight)
+                                                .add("wCache=" + weightCache)
                                                 .add("time=" + snapshot.getAvgResponseMs() * snapshot.getNumberOfSuccesses())
                                                 .add("avg=" + snapshot.getAvgResponseMs())
                                                 .add("suc=" + snapshot.getNumberOfSuccesses())
                                                 .add("cpu=" + s)
                                                 .add("run=" + snapshot.getServerStats().getRuntimeInfo())
                                                 .toString());
+
                         }
                     }
                 } catch (Throwable t) {
@@ -145,4 +192,6 @@ public class CallbackServiceImpl implements CallbackService {
             logger.error("schedule error", throwable);
         }
     }
+
+
 }

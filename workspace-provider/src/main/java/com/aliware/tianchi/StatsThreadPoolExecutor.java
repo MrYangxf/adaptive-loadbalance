@@ -6,6 +6,7 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import java.util.HashSet;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
 
 /**
  * @author yangxf
@@ -17,7 +18,10 @@ public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
 
     private final HashSet<Thread> threads = new HashSet<>();
 
-    public StatsThreadPoolExecutor(int corePoolSize,
+    private final Lock lock;
+
+    public StatsThreadPoolExecutor(Lock lock,
+                                   int corePoolSize,
                                    int maximumPoolSize,
                                    long keepAliveTime,
                                    TimeUnit unit,
@@ -25,6 +29,22 @@ public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
                                    ThreadFactory threadFactory,
                                    RejectedExecutionHandler handler) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory, handler);
+        this.lock = lock;
+    }
+
+    @Override
+    public void execute(Runnable command) {
+        lock.lock();
+        try {
+            super.execute(command);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    @Override
+    public boolean remove(Runnable task) {
+        return super.remove(task);
     }
 
     @Override
@@ -35,13 +55,33 @@ public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
     @Override
     protected void beforeExecute(Thread t, Runnable r) {
         super.beforeExecute(t, r);
-        // threads.add(t);
-        counter.getAndIncrement();
+        if (!(r instanceof TestTask)) {
+            counter.getAndIncrement();
+        }
     }
 
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
-        counter.getAndDecrement();
+        if (!(r instanceof TestTask)) {
+            counter.getAndDecrement();
+        }
         super.afterExecute(r, t);
+    }
+
+    public static class TestTask implements Runnable {
+
+        synchronized void close() {
+            notifyAll();
+        }
+
+        @Override
+        public synchronized void run() {
+            try {
+                wait();
+            } catch (InterruptedException e) {
+                //
+            }
+        }
+
     }
 }

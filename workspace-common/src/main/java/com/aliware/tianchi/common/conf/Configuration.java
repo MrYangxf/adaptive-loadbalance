@@ -47,7 +47,7 @@ public class Configuration implements Serializable {
 
     private SegmentCounterFactory counterFactory = () -> new SkipListCounter();
 
-    private boolean openAvgRT = true;
+    private boolean openAvgRT = false;
     
     private boolean openThroughput = false;
 

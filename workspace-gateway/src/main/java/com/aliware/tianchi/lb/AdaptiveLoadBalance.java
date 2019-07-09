@@ -99,8 +99,11 @@ public class AdaptiveLoadBalance implements LoadBalance {
             //     continue;
             // }
 
-            mapping.put(stats.getAddress(), invoker);
-            queue.offer(stats);
+            if (stats.getToken()) {
+                mapping.put(stats.getAddress(), invoker);
+                queue.offer(stats);
+            }
+
         }
 
         // if (queue.isEmpty()) {
@@ -135,17 +138,17 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
             String address = stats.getAddress();
 
-            long waits = lbStatistics.getWaits(address);
-            int activeCount = stats.getActiveCount();
-            long netWaits = (waits - activeCount) / 2;
-            netWaits = netWaits < 0 ? 0 : netWaits;
-
-            double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / stats.intervalTimeMs();
-            int threads = stats.getDomainThreads();
-            if (activeCount > threads * .5 &&
-                waits > mc + netWaits) {
-                continue;
-            }
+            // long waits = lbStatistics.getWaits(address);
+            // int activeCount = stats.getActiveCount();
+            // long netWaits = (waits - activeCount) / 2;
+            // netWaits = netWaits < 0 ? 0 : netWaits;
+            //
+            // double mc = stats.getWeight();
+            // int threads = stats.getDomainThreads();
+            // if (activeCount > threads * .5 &&
+            //     waits > mc + netWaits) {
+            //     continue;
+            // }
 
             if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
                 logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + address +

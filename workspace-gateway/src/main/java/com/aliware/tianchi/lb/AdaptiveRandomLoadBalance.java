@@ -52,23 +52,23 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
             Invoker<T> invoker = invokers.get(i);
             String address = DubboUtil.getIpAddress(invoker);
             SnapshotStats stats = instanceStatsMap.get(address);
-            int waits = LBStatistics.INSTANCE.getWaits(address);
             if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
-            double avgResponseMs = stats.getAvgResponseMs();
-            long successes = stats.getNumberOfSuccesses();
-            double weight = avgResponseMs * successes / stats.intervalTimeMs();
+            // double avgResponseMs = stats.getAvgResponseMs();
+            // long successes = stats.getNumberOfSuccesses();
+            // double weight = avgResponseMs * successes / stats.intervalTimeMs();
             // double weight = LBStatistics.INSTANCE.getWaits(address);
             // double weight = stats.getNumberOfSuccesses();
+            double weight = stats.getWeight();
             if (weight == 0) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
 
-            if (waits < stats.getDomainThreads() * .5 &&
-                    ThreadLocalRandom.current().nextBoolean()) {
-                return invoker;
-            }
+            // if (waits < stats.getDomainThreads() * .5 &&
+            //         ThreadLocalRandom.current().nextBoolean()) {
+            //     return invoker;
+            // }
             total += weight;
             weights[i] = weight;
         }
@@ -89,15 +89,14 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
             for (int i = 0; i < weights.length; i++) {
                 if (select < weights[i]) {
                     Invoker<T> invoker = invokers.get(i);
-                    String address = DubboUtil.getIpAddress(invoker);
-                    SnapshotStats stats = instanceStatsMap.get(address);
-                    int waits = LBStatistics.INSTANCE.getWaits(address);
-                    if (waits > stats.getDomainThreads() * conf.getMaxRateOfWaitingRequests()) {
-                        rm++;
-                        weights[i] = 0;
-                        total -= weights[i];
-                        break;
-                    }
+                    // String address = DubboUtil.getIpAddress(invoker);
+                    // SnapshotStats stats = instanceStatsMap.get(address);
+                    // if (stats.getToken()) {
+                    //     rm++;
+                    //     weights[i] = 0;
+                    //     total -= weights[i];
+                    //     break;
+                    // }
                     return invoker;
                 }
                 select -= weights[i];

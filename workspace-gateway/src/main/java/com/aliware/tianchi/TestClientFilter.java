@@ -1,5 +1,6 @@
 package com.aliware.tianchi;
 
+import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.Constants;
@@ -17,14 +18,23 @@ import org.apache.dubbo.rpc.*;
 public class TestClientFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        LBStatistics.INSTANCE.queue(DubboUtil.getIpAddress(invoker));
+        // LBStatistics.INSTANCE.queue(DubboUtil.getIpAddress(invoker));
         // UserLoadBalance.rule.queue(DubboUtil.getIpAddress(invoker));
         return invoker.invoke(invocation);
     }
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        LBStatistics.INSTANCE.dequeue(DubboUtil.getIpAddress(invoker));
+        // String address = DubboUtil.getIpAddress(invoker);
+        // String serviceId = DubboUtil.getServiceId(invoker, invocation);
+        // SnapshotStats stats = LBStatistics.INSTANCE.getInstanceStats(serviceId, address);
+        // if (stats != null) {
+        //     String epoch = invocation.getAttachment("CURRENT_STATS_EPOCH", "0");
+        //     if (epoch.equals(String.valueOf(stats.getEpoch()))) {
+        //         stats.releaseToken();
+        //     }
+        // }
+        // LBStatistics.INSTANCE.dequeue(address);
         // UserLoadBalance.rule.dequeue(DubboUtil.getIpAddress(invoker));
         return result;
     }
