@@ -7,8 +7,6 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
-import java.util.concurrent.locks.Lock;
-
 /**
  * @author daofeng.xjf
  * <p>
@@ -20,8 +18,6 @@ import java.util.concurrent.locks.Lock;
 public class TestClientFilter implements Filter {
     @Override
     public Result invoke(Invoker<?> invoker, Invocation invocation) throws RpcException {
-        // LBStatistics.INSTANCE.queue(DubboUtil.getIpAddress(invoker));
-        // UserLoadBalance.rule.queue(DubboUtil.getIpAddress(invoker));
         return invoker.invoke(invocation);
     }
 
@@ -36,8 +32,6 @@ public class TestClientFilter implements Filter {
                 stats.releaseToken();
             }
         }
-        // LBStatistics.INSTANCE.dequeue(address);
-        // UserLoadBalance.rule.dequeue(DubboUtil.getIpAddress(invoker));
         return result;
     }
 }

@@ -3,7 +3,6 @@ package com.aliware.tianchi.lb;
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.DubboUtil;
-import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SmallPriorityQueue;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.URL;
@@ -15,13 +14,10 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.cluster.LoadBalance;
 
 import java.util.*;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
 
-import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
-import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.*;
 
 /**
  * @author yangxf
@@ -33,44 +29,26 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
     private final long start = System.nanoTime();
 
-    private Configuration conf;
+    private final Configuration conf;
 
-    private final ThreadLocal<Queue<SnapshotStats>> localSmallQ;
-
-    private final ThreadLocal<Queue<SnapshotStats>> localHeapQ;
-
-    private final long windowMillis;
+    private final Comparator<SnapshotStats> comparator;
 
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
         this.conf = conf;
-        Comparator<SnapshotStats> comparator =
-                (o1, o2) -> {
-                    double a1 = o1.getAvgRTMs(),
-                            a2 = o2.getAvgRTMs();
-
-                    return Double.compare(a1, a2);
-                };
-        // Comparator<SnapshotStats> comparator = conf.getStatsComparator();
-        localSmallQ = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator));
-        localHeapQ = ThreadLocal.withInitial(() -> new PriorityQueue<>(comparator));
-
-        long size = conf.getWindowSizeOfStats() * conf.getTimeIntervalOfStats();
-        windowMillis = TimeUnit.MILLISECONDS.convert(size, conf.getTimeUnitOfStats());
+        comparator = Comparator.comparingDouble(SnapshotStats::getAvgRTMs);
     }
 
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {
         int size = invokers.size();
 
-        if (ThreadLocalRandom.current().nextInt() % (size + 1) == 0) {
-            return invokers.get(ThreadLocalRandom.current().nextInt(size));
-        }
-
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
         Map<String, Invoker<T>> mapping = new HashMap<>();
 
-        Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ? localHeapQ.get() : localSmallQ.get();
+        Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ?
+                new PriorityQueue<>(comparator) :
+                new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator);
 
         String serviceId = DubboUtil.getServiceId(invokers.get(0), invocation);
 
@@ -85,26 +63,36 @@ public class AdaptiveLoadBalance implements LoadBalance {
             if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
-
-            
-            mapping.put(stats.getAddress(), invoker);
+            mapping.put(address, invoker);
             queue.offer(stats);
         }
 
-        for (int mask = 1; ; ) {
+        long maxToken = Long.MIN_VALUE;
+        SnapshotStats idleStats = null;
+        for (int mask = 0x00000001; ; ) {
             SnapshotStats stats = queue.poll();
-            if (stats == null) {
+            if (isNull(stats)) {
                 break;
             }
 
+            if (stats.acquireToken()) {
 
-            if (stats.getToken()) {
+                if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
+                    mask = (mask << 1) | mask;
+                    long tokens = stats.releaseToken();
+                    if (tokens > maxToken) {
+                        maxToken = tokens;
+                        idleStats = stats;
+                    }
+                    continue;
+                }
+
                 String address = stats.getAddress();
                 if ((ThreadLocalRandom.current().nextInt() & 511) == 0) {
-                    logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start) + " select " + address +
+                    logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start) +
+                                ", select " + address +
                                 ", epoch=" + stats.getEpoch() +
                                 ", tokens=" + stats.tokens() +
-                                // ", waits=" + lbStatistics.getWaits(address) +
                                 ", active=" + stats.getActiveCount() +
                                 ", threads=" + stats.getDomainThreads() +
                                 ", avg=" + stats.getAvgRTMs() +
@@ -115,10 +103,14 @@ public class AdaptiveLoadBalance implements LoadBalance {
                                         ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
                                );
                 }
+
                 invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
-                queue.clear();
                 return mapping.get(address);
             }
+        }
+
+        if (nonNull(idleStats) && idleStats.acquireToken()) {
+            return mapping.get(idleStats.getAddress());
         }
 
         logger.info("all providers are overloaded");

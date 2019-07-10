@@ -130,7 +130,7 @@ public class AdaptiveRandomLoadBalance implements LoadBalance {
                     Invoker<T> invoker = invokers.get(i);
                     // String address = DubboUtil.getIpAddress(invoker);
                     // SnapshotStats stats = instanceStatsMap.get(address);
-                    // if (stats.getToken()) {
+                    // if (stats.acquireToken()) {
                     //     rm++;
                     //     weights[i] = 0;
                     //     total -= weights[i];

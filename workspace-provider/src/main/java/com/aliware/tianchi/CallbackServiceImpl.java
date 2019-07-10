@@ -4,7 +4,6 @@ import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.MathUtil;
-import com.aliware.tianchi.common.util.OSUtil;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
@@ -13,21 +12,13 @@ import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
-import java.lang.management.ThreadMXBean;
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantLock;
 
-import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
@@ -59,8 +50,6 @@ public class CallbackServiceImpl implements CallbackService {
      */
     private static final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
 
-    private static final AtomicLong EPOCH = new AtomicLong();
-
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
@@ -76,11 +65,12 @@ public class CallbackServiceImpl implements CallbackService {
         }
         try {
 
-            long epoch = EPOCH.getAndIncrement();
 
             // update runtime info
             NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
             helper.updateRuntimeInfo();
+
+            long epoch = helper.getAndIncrementEpoch();
 
             TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
                                                                         .getAdaptiveExtension();
@@ -103,7 +93,7 @@ public class CallbackServiceImpl implements CallbackService {
                 }
             } else {
                 weight = weightCache;
-            } 
+            }
 
             logger.info(new StringJoiner(", ")
                                 .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))

@@ -16,6 +16,7 @@ import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -39,6 +40,8 @@ public class NearRuntimeHelper {
 
     private final ScheduledExecutorService scheduledExecutor;
 
+    private volatile AtomicLong epoch;
+
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
         this.conf = conf;
@@ -49,6 +52,13 @@ public class NearRuntimeHelper {
         return scheduledExecutor;
     }
 
+    public long getAndIncrementEpoch() {
+        if (epoch == null) {
+            return 0;
+        }
+        return epoch.getAndIncrement();
+    }
+    
     public void updateRuntimeInfo() {
         synchronized (buf) {
             buf.addFirst(new RuntimeInfo());
@@ -81,6 +91,7 @@ public class NearRuntimeHelper {
                     String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
                     int nThreads = Integer.parseInt(nThreadsString);
                     stats = newStats(DubboUtil.getIpAddress(invoker), nThreads);
+                    epoch = new AtomicLong(1);
                 }
             }
         }
@@ -108,40 +119,5 @@ public class NearRuntimeHelper {
                                             conf.getCounterFactory());
         stats.setDomainThreads(nThreads);
         return stats;
-        // return new CountWindowInstanceStats(address, new ServerStats(address), nThreads * 5);
-    }
-
-    private volatile ConcurrentLinkedQueue<Integer> activeQueue = new ConcurrentLinkedQueue<>();
-
-    public void putActiveCount(int activeCount) {
-        activeQueue.offer(activeCount);
-    }
-
-    public synchronized int getActiveCount() {
-        ConcurrentLinkedQueue<Integer> queue = activeQueue;
-        activeQueue = new ConcurrentLinkedQueue<>();
-
-        int sum = 0, size = 0, min = Integer.MAX_VALUE, max = 0;
-        for (int ac : queue) {
-            if (ac == 0) {
-                continue;
-            }
-            sum += ac;
-            size++;
-            if (ac > max) max = ac;
-            if (ac < min) min = ac;
-        }
-
-        if (size > 10) {
-            sum -= max;
-            sum -= min;
-            size -= 2;
-        }
-
-        if (size == 0) {
-            return 0;
-        }
-
-        return sum / size;
     }
 }

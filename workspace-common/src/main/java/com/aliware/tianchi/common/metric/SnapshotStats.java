@@ -146,7 +146,7 @@ public abstract class SnapshotStats implements Serializable {
                + GROUP_SEPARATOR + getServerStats().getRuntimeInfo();
     }
 
-    public boolean getToken() {
+    public boolean acquireToken() {
         long n = token.get();
         while (n > 0) {
             if (token.compareAndSet(n, n - 1)) {
@@ -156,6 +156,10 @@ public abstract class SnapshotStats implements Serializable {
         }
         return false;
     }
+
+    public long releaseToken() {
+        return token.incrementAndGet();
+    }
     
     public long tokens() {
         return token.get();
@@ -163,10 +167,6 @@ public abstract class SnapshotStats implements Serializable {
     
     public void addTokens(long tokens) {
         token.getAndAdd(tokens);
-    }
-    
-    public void releaseToken() {
-        token.getAndIncrement();
     }
     
     public long getEpoch() {

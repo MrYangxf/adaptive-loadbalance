@@ -3,15 +3,13 @@ package com.aliware.tianchi.lb.metric;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.rpc.Invoker;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.LongAdder;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
@@ -33,6 +31,13 @@ public class LBStatistics {
     }
 
     public Map<String, SnapshotStats> getInstanceStatsMap(String serviceId) {
+        // Map.Entry<Long, Map<String, Map<String, SnapshotStats>>> firstEntry = sortedRegistry.firstEntry();
+        // if (isNull(firstEntry)) {
+        //     return null;
+        // }
+        //
+        // Map<String, Map<String, SnapshotStats>> registry = firstEntry.getValue();
+
         Map<String, SnapshotStats> instanceStatsMap = registry.get(serviceId);
         if (instanceStatsMap == null) {
             Map<String, SnapshotStats> newMap = new ConcurrentHashMap<>();
@@ -48,6 +53,9 @@ public class LBStatistics {
         Map<String, SnapshotStats> instanceStatsMap = getInstanceStatsMap(serviceId);
         return instanceStatsMap.get(address);
     }
+
+    private ConcurrentSkipListMap<Long, Map<String, Map<String, SnapshotStats>>>
+            sortedRegistry = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
 
     public void updateInstanceStats(String serviceId, String address, SnapshotStats snapshotStats) {
         Map<String, SnapshotStats> instanceStatsMap = getInstanceStatsMap(serviceId);
@@ -90,17 +98,5 @@ public class LBStatistics {
             }
         }
         return snap;
-    }
-
-    private final Lock lock = new ReentrantLock();
-
-    private final Condition token = lock.newCondition();
-
-    public Lock getLock() {
-        return lock;
-    }
-
-    public Condition getToken() {
-        return token;
     }
 }
