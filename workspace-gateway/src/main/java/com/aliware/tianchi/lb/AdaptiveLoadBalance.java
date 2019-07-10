@@ -110,6 +110,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
         }
 
         if (nonNull(idleStats) && idleStats.acquireToken()) {
+            invocation.getAttachments().put("CURRENT_STATS_EPOCH", idleStats.getEpoch() + "");
             return mapping.get(idleStats.getAddress());
         }
 
