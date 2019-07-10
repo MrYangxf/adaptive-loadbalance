@@ -69,7 +69,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
         long maxToken = Long.MIN_VALUE;
         SnapshotStats idleStats = null;
-        for (int mask = 0x00000001; ; ) {
+        for (int mask = 0x80000001; ; ) {
             SnapshotStats stats = queue.poll();
             if (isNull(stats)) {
                 break;
