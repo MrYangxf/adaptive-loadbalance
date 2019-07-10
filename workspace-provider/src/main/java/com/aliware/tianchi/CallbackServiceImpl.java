@@ -48,23 +48,24 @@ public class CallbackServiceImpl implements CallbackService {
      * key: listener type
      * value: callback listener
      */
-    private static final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
+    private final Map<String, CallbackListener> listeners = new ConcurrentHashMap<>();
 
     @Override
     public void addListener(String key, CallbackListener listener) {
         listeners.put(key, listener);
     }
 
-    private volatile static double weightCache;
+    private volatile double weightCache;
 
-    private static final AtomicInteger counter = new AtomicInteger();
+    private final AtomicInteger counter = new AtomicInteger();
 
-    private static void _updateAndNotify(boolean clean) {
+    private volatile long previousMillis = System.currentTimeMillis();
+
+    private void _updateAndNotify(boolean clean) {
         if (START == 0) {
             START = System.nanoTime();
         }
         try {
-
 
             // update runtime info
             NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
@@ -83,15 +84,13 @@ public class CallbackServiceImpl implements CallbackService {
             if (sem > 0) {
                 weight = other;
                 weightCache = weight;
-                counter.lazySet(10);
-            } else if (counter.decrementAndGet() < 0) {
-                if (MathUtil.isApproximate(other, weightCache, 10)) {
-                    weight = weightCache;
-                } else if (other > weightCache) {
-                    weight = other;
-                    weightCache = weight;
-                }
-            } else {
+                previousMillis = System.currentTimeMillis();
+            } else if (MathUtil.isApproximate(other, weightCache, 10)) {
+                weight = weightCache;
+            } else if (other > weightCache) {
+                weight = other;
+                weightCache = weight;
+            } else if (System.currentTimeMillis() < previousMillis + 3000) {
                 weight = weightCache;
             }
 
@@ -117,7 +116,7 @@ public class CallbackServiceImpl implements CallbackService {
                             snapshot.setEpoch(epoch);
                             int threads = snapshot.getDomainThreads();
                             if (weight < threads / 2) {
-                                weight = threads * .8;
+                                weight = threads * 1;
                                 weightCache = other;
                             }
                             snapshot.setWeight(weight * 1);

@@ -32,11 +32,13 @@ public class AdaptiveLoadBalance implements LoadBalance {
     private final Configuration conf;
 
     private final Comparator<SnapshotStats> comparator;
+    private final Comparator<SnapshotStats> idleComparator;
 
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
         this.conf = conf;
         comparator = Comparator.comparingDouble(SnapshotStats::getAvgRTMs);
+        idleComparator = Comparator.comparingLong(SnapshotStats::tokens);
     }
 
     @Override
@@ -67,9 +69,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
             queue.offer(stats);
         }
 
-        long maxToken = Long.MIN_VALUE;
-        SnapshotStats idleStats = null;
-        for (int mask = 0x80000001; ; ) {
+        Queue<SnapshotStats> idleQueue = null;
+        for (int mask = 0x00000001; ; ) {
             SnapshotStats stats = queue.poll();
             if (isNull(stats)) {
                 break;
@@ -78,12 +79,16 @@ public class AdaptiveLoadBalance implements LoadBalance {
             if (stats.acquireToken()) {
 
                 if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
-                    mask = (mask << 1) | mask;
-                    long tokens = stats.releaseToken();
-                    if (tokens > maxToken) {
-                        maxToken = tokens;
-                        idleStats = stats;
+                    stats.releaseToken();
+
+                    if (isNull(idleQueue)) {
+                        idleQueue = size > HEAP_THRESHOLD ?
+                                new PriorityQueue<>(idleComparator) :
+                                new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
                     }
+
+                    idleQueue.offer(stats);
+                    mask = (mask << 1) | mask;
                     continue;
                 }
 
@@ -109,9 +114,15 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
         }
 
-        if (nonNull(idleStats) && idleStats.acquireToken()) {
-            invocation.getAttachments().put("CURRENT_STATS_EPOCH", idleStats.getEpoch() + "");
-            return mapping.get(idleStats.getAddress());
+        while (nonNull(idleQueue)) {
+            SnapshotStats stats = idleQueue.poll();
+            if (isNull(stats)) {
+                break;
+            }
+            if (stats.acquireToken()) {
+                invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
+                return mapping.get(stats.getAddress());
+            }
         }
 
         logger.info("all providers are overloaded");

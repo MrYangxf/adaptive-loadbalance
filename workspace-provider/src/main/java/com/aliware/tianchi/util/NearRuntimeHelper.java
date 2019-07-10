@@ -58,13 +58,13 @@ public class NearRuntimeHelper {
         }
         return epoch.getAndIncrement();
     }
-    
+
     public void updateRuntimeInfo() {
-        synchronized (buf) {
-            buf.addFirst(new RuntimeInfo());
-            RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
-            if (nonNull(stats)) {
-                if (conf.isOpenRuntimeStats()) {
+        if (conf.isOpenRuntimeStats()) {
+            synchronized (buf) {
+                buf.addFirst(new RuntimeInfo());
+                RuntimeInfo info = RuntimeInfo.merge(buf.toArray(new RuntimeInfo[0]));
+                if (nonNull(stats)) {
                     stats.getServerStats().setRuntimeInfo(info);
                 }
                 current = info;

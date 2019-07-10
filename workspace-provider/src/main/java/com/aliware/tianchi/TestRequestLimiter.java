@@ -33,7 +33,6 @@ public class TestRequestLimiter implements RequestLimiter {
         InstanceStats stats = helper.getInstanceStats();
         if (nonNull(stats)) {
             stats.setActiveCount(activeTaskCount);
-            // helper.putActiveCount(activeTaskCount);
             RuntimeInfo runtimeInfo = helper.getRuntimeInfo();
             if (nonNull(runtimeInfo)) {
                 double processCpuLoad = runtimeInfo.getProcessCpuLoad();
