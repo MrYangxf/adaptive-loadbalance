@@ -1,6 +1,7 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.common.conf.Configuration;
+import com.aliware.tianchi.lb.AdaptiveLoadBalance;
 import com.aliware.tianchi.lb.AdaptiveRandomLoadBalance;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.rpc.Invocation;
@@ -22,7 +23,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.isEmpty;
  */
 public class UserLoadBalance implements LoadBalance {
 
-    public static final LoadBalance rule = new AdaptiveRandomLoadBalance(new Configuration());
+    public static final LoadBalance rule = new AdaptiveLoadBalance(new Configuration());
 
     @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) throws RpcException {

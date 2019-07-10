@@ -7,6 +7,8 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 
+import java.util.concurrent.locks.Lock;
+
 /**
  * @author daofeng.xjf
  * <p>
@@ -25,15 +27,15 @@ public class TestClientFilter implements Filter {
 
     @Override
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
-        // String address = DubboUtil.getIpAddress(invoker);
-        // String serviceId = DubboUtil.getServiceId(invoker, invocation);
-        // SnapshotStats stats = LBStatistics.INSTANCE.getInstanceStats(serviceId, address);
-        // if (stats != null) {
-        //     String epoch = invocation.getAttachment("CURRENT_STATS_EPOCH", "0");
-        //     if (epoch.equals(String.valueOf(stats.getEpoch()))) {
-        //         stats.releaseToken();
-        //     }
-        // }
+        String address = DubboUtil.getIpAddress(invoker);
+        String serviceId = DubboUtil.getServiceId(invoker, invocation);
+        SnapshotStats stats = LBStatistics.INSTANCE.getInstanceStats(serviceId, address);
+        if (stats != null) {
+            String epoch = invocation.getAttachment("CURRENT_STATS_EPOCH", "0");
+            if (epoch.equals(String.valueOf(stats.getEpoch()))) {
+                stats.releaseToken();
+            }
+        }
         // LBStatistics.INSTANCE.dequeue(address);
         // UserLoadBalance.rule.dequeue(DubboUtil.getIpAddress(invoker));
         return result;

@@ -19,16 +19,19 @@ public abstract class SnapshotStats implements Serializable {
     private volatile double weight;
     
     private volatile long epoch;
+    
+    private volatile double avgRTMs;
 
     private AtomicLong token = new AtomicLong();
 
     public SnapshotStats() {
     }
     
-    public SnapshotStats(double weight, long epoch) {
+    public SnapshotStats(double weight, long epoch, double avgRTMs) {
         this.weight = weight;
         this.epoch = epoch;
         token.lazySet((long) weight + 1L);
+        this.avgRTMs = avgRTMs;
     }
 
     public static SnapshotStats fromString(String text) {
@@ -65,7 +68,7 @@ public abstract class SnapshotStats implements Serializable {
                 null : RuntimeInfo.fromString(groups[2]);
         serverStats.setRuntimeInfo(runInfo);
 
-        return new SnapshotStats(weight, epoch) {
+        return new SnapshotStats(weight, epoch, avgResponseMs) {
             private static final long serialVersionUID = 6197862269143364929L;
 
             @Override
@@ -104,11 +107,6 @@ public abstract class SnapshotStats implements Serializable {
             }
 
             @Override
-            public double getAvgResponseMs() {
-                return avgResponseMs;
-            }
-
-            @Override
             public long getThroughput() {
                 return throughput;
             }
@@ -141,7 +139,7 @@ public abstract class SnapshotStats implements Serializable {
                + getNumberOfSuccesses() + SEPARATOR
                + getNumberOfFailures() + SEPARATOR
                + getNumberOfRejections() + SEPARATOR
-               + getAvgResponseMs() + SEPARATOR
+               + getAvgRTMs() + SEPARATOR
                + getThroughput() + SEPARATOR
                + getWeight() + SEPARATOR
                + getEpoch()
@@ -149,16 +147,26 @@ public abstract class SnapshotStats implements Serializable {
     }
 
     public boolean getToken() {
-        long t = token.decrementAndGet();
-        if (t >= 0) {
-            return true;
+        long n = token.get();
+        while (n > 0) {
+            if (token.compareAndSet(n, n - 1)) {
+                return true;
+            }
+            n = token.get();
         }
-        token.incrementAndGet();
         return false;
     }
     
+    public long tokens() {
+        return token.get();
+    }
+    
+    public void addTokens(long tokens) {
+        token.getAndAdd(tokens);
+    }
+    
     public void releaseToken() {
-        token.incrementAndGet();
+        token.getAndIncrement();
     }
     
     public long getEpoch() {
@@ -205,8 +213,13 @@ public abstract class SnapshotStats implements Serializable {
         throw new UnsupportedOperationException();
     }
 
-    public double getAvgResponseMs() {
-        throw new UnsupportedOperationException();
+    public double getAvgRTMs() {
+        return avgRTMs;
+    }
+
+    public SnapshotStats setAvgRTMs(double avgRTMs) {
+        this.avgRTMs = avgRTMs;
+        return this;
     }
 
     public long getThroughput() {

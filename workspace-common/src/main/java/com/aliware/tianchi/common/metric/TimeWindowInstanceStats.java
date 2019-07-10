@@ -313,11 +313,6 @@ public class TimeWindowInstanceStats implements InstanceStats {
             }
 
             @Override
-            public double getAvgResponseMs() {
-                return _getAvgResponseMs(serviceId, offset);
-            }
-
-            @Override
             public long getThroughput() {
                 return _getThroughput(serviceId, offset);
             }
@@ -336,7 +331,7 @@ public class TimeWindowInstanceStats implements InstanceStats {
             public long getNumberOfRejections() {
                 return _getNumberOfRejections(serviceId, offset);
             }
-        };
+        }.setAvgRTMs(_getAvgResponseMs(serviceId, offset));
     }
 
     @Override

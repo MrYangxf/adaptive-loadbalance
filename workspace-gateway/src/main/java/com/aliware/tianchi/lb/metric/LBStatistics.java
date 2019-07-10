@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
@@ -47,7 +50,16 @@ public class LBStatistics {
     }
 
     public void updateInstanceStats(String serviceId, String address, SnapshotStats snapshotStats) {
-        getInstanceStatsMap(serviceId).put(address, snapshotStats);
+        Map<String, SnapshotStats> instanceStatsMap = getInstanceStatsMap(serviceId);
+        SnapshotStats oldStats = instanceStatsMap.putIfAbsent(address, snapshotStats);
+        if (oldStats != null) {
+            double w1 = snapshotStats.getWeight();
+            double w2 = oldStats.getWeight();
+            double d = w1 - w2;
+            oldStats.setWeight(w1);
+            oldStats.addTokens((long) d);
+            oldStats.setAvgRTMs(snapshotStats.getAvgRTMs());
+        }
     }
 
     public void queue(String address) {
@@ -80,4 +92,15 @@ public class LBStatistics {
         return snap;
     }
 
+    private final Lock lock = new ReentrantLock();
+
+    private final Condition token = lock.newCondition();
+
+    public Lock getLock() {
+        return lock;
+    }
+
+    public Condition getToken() {
+        return token;
+    }
 }

@@ -21,7 +21,7 @@ import java.util.Set;
  */
 public class TestClusterInvoker<T> extends AbstractClusterInvoker<T> {
 
-    private static final Logger logger = LoggerFactory.getLogger(org.apache.dubbo.rpc.cluster.support.FailoverClusterInvoker.class);
+    private static final Logger logger = LoggerFactory.getLogger(TestClusterInvoker.class);
 
     public TestClusterInvoker(Directory<T> directory) {
         super(directory);
@@ -50,7 +50,7 @@ public class TestClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 // check again
                 checkInvokers(copyInvokers, invocation);
             }
-            
+
             Invoker<T> invoker;
             try {
                 invoker = select(loadbalance, invocation, copyInvokers, invoked);

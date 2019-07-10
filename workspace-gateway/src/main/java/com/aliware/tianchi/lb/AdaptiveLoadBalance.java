@@ -15,8 +15,10 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.cluster.LoadBalance;
 
 import java.util.*;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
@@ -28,6 +30,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
     private static final Logger logger = LoggerFactory.getLogger(AdaptiveLoadBalance.class);
 
     private static final int HEAP_THRESHOLD = 8;
+
+    private final long start = System.nanoTime();
 
     private Configuration conf;
 
@@ -42,8 +46,8 @@ public class AdaptiveLoadBalance implements LoadBalance {
         this.conf = conf;
         Comparator<SnapshotStats> comparator =
                 (o1, o2) -> {
-                    double a1 = o1.getAvgResponseMs(),
-                            a2 = o2.getAvgResponseMs();
+                    double a1 = o1.getAvgRTMs(),
+                            a2 = o2.getAvgRTMs();
 
                     return Double.compare(a1, a2);
                 };
@@ -69,61 +73,23 @@ public class AdaptiveLoadBalance implements LoadBalance {
         Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ? localHeapQ.get() : localSmallQ.get();
 
         String serviceId = DubboUtil.getServiceId(invokers.get(0), invocation);
-        long maxIdleThreads = Long.MIN_VALUE;
-        Invoker<T> mostIdleIvk = null;
+
+        Map<String, SnapshotStats> instanceStatsMap = lbStatistics.getInstanceStatsMap(serviceId);
+        if (isNull(instanceStatsMap)) {
+            return invokers.get(ThreadLocalRandom.current().nextInt(size));
+        }
+
         for (Invoker<T> invoker : invokers) {
             String address = DubboUtil.getIpAddress(invoker);
-            SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
-            RuntimeInfo runtimeInfo = null;
-            if (isNull(stats) ||
-                conf.isOpenRuntimeStats() &&
-                isNull(runtimeInfo = stats.getServerStats().getRuntimeInfo())) {
-                queue.clear();
+            SnapshotStats stats = instanceStatsMap.get(address);
+            if (isNull(stats)) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
 
-            // long waits = lbStatistics.getWaits(address);
-            // int threads = stats.getDomainThreads();
-            //
-            // long idleThreads = threads - waits;
-            // if (idleThreads > maxIdleThreads) {
-            //     maxIdleThreads = idleThreads;
-            //     mostIdleIvk = invoker;
-            // }
-            //
-            // double mc = stats.getAvgResponseMs() * stats.getNumberOfSuccesses() / windowMillis;
-            //
-            // if (waits > mc ||
-            //     conf.isOpenRuntimeStats() &&
-            //     runtimeInfo.getProcessCpuLoad() > conf.getMaxProcessCpuLoad()) {
-            //     continue;
-            // }
-
-            if (stats.getToken()) {
-                mapping.put(stats.getAddress(), invoker);
-                queue.offer(stats);
-            }
-
+            
+            mapping.put(stats.getAddress(), invoker);
+            queue.offer(stats);
         }
-
-        // if (queue.isEmpty()) {
-        //     assert mostIdleIvk != null;
-        //     String address = DubboUtil.getIpAddress(mostIdleIvk);
-        //     SnapshotStats stats = lbStatistics.getInstanceStats(serviceId, address);
-        //     if (nonNull(stats))
-        //     logger.info("queue is empty, mostIdleIvk " + address +
-        //                 ", waits=" + lbStatistics.getWaits(address) +
-        //                 ", active=" + stats.getActiveCount() +
-        //                 ", threads=" + stats.getDomainThreads() +
-        //                 ", avg=" + stats.getAvgResponseMs() +
-        //                 ", suc=" + stats.getNumberOfSuccesses() +
-        //                 ", fai=" + stats.getNumberOfFailures() +
-        //                 ", tpt=" + stats.getThroughput() +
-        //                 (conf.isOpenRuntimeStats() ?
-        //                         ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
-        //                );
-        //     // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
-        // }
 
         for (int mask = 1; ; ) {
             SnapshotStats stats = queue.poll();
@@ -131,42 +97,32 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 break;
             }
 
-            // if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
-            //     mask = (mask << 1) | mask;
-            //     continue;
-            // }
 
-            String address = stats.getAddress();
-
-            // long waits = lbStatistics.getWaits(address);
-            // int activeCount = stats.getActiveCount();
-            // long netWaits = (waits - activeCount) / 2;
-            // netWaits = netWaits < 0 ? 0 : netWaits;
-            //
-            // double mc = stats.getWeight();
-            // int threads = stats.getDomainThreads();
-            // if (activeCount > threads * .5 &&
-            //     waits > mc + netWaits) {
-            //     continue;
-            // }
-
-            if ((ThreadLocalRandom.current().nextInt() & 511) == 0)
-                logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime()) + " select " + address +
-                            ", waits=" + lbStatistics.getWaits(address) +
-                            ", active=" + stats.getActiveCount() +
-                            ", threads=" + stats.getDomainThreads() +
-                            ", avg=" + stats.getAvgResponseMs() +
-                            ", suc=" + stats.getNumberOfSuccesses() +
-                            ", fai=" + stats.getNumberOfFailures() +
-                            ", tpt=" + stats.getThroughput() +
-                            (conf.isOpenRuntimeStats() ?
-                                    ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
-                           );
-            queue.clear();
-            return mapping.get(address);
+            if (stats.getToken()) {
+                String address = stats.getAddress();
+                if ((ThreadLocalRandom.current().nextInt() & 511) == 0) {
+                    logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start) + " select " + address +
+                                ", epoch=" + stats.getEpoch() +
+                                ", tokens=" + stats.tokens() +
+                                // ", waits=" + lbStatistics.getWaits(address) +
+                                ", active=" + stats.getActiveCount() +
+                                ", threads=" + stats.getDomainThreads() +
+                                ", avg=" + stats.getAvgRTMs() +
+                                ", suc=" + stats.getNumberOfSuccesses() +
+                                ", fai=" + stats.getNumberOfFailures() +
+                                ", tpt=" + stats.getThroughput() +
+                                (conf.isOpenRuntimeStats() ?
+                                        ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
+                               );
+                }
+                invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
+                queue.clear();
+                return mapping.get(address);
+            }
         }
 
-        // return mostIdleIvk;
+        logger.info("all providers are overloaded");
+
         throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
     }
 }

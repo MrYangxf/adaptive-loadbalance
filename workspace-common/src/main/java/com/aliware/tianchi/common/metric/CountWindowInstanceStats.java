@@ -108,10 +108,6 @@ public class CountWindowInstanceStats implements InstanceStats {
                     return serverStats;
                 }
 
-                @Override
-                public double getAvgResponseMs() {
-                    return avgRT;
-                }
 
                 @Override
                 public long getThroughput() {

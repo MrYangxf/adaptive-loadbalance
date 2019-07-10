@@ -9,6 +9,7 @@ import org.apache.dubbo.rpc.listener.CallbackListener;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
@@ -23,6 +24,7 @@ public class CallbackListenerImpl implements CallbackListener {
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackListenerImpl.class);
     static final long START = System.nanoTime();
+
     @Override
     public void receiveServerMsg(String msg) {
         if (nonEmpty(msg)) {
@@ -30,16 +32,21 @@ public class CallbackListenerImpl implements CallbackListener {
                 SnapshotStats stats = SnapshotStats.fromString(msg);
                 String serviceId = stats.getServiceId();
                 String address = stats.getAddress();
-                LBStatistics.INSTANCE.updateInstanceStats(serviceId, address, stats);
+
+                LBStatistics lbStatistics = LBStatistics.INSTANCE;
+                lbStatistics.updateInstanceStats(serviceId, address, stats);
+                
 
                 if (serviceId.contains("hash")) {
-                    logger.info("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START) + 
+                    logger.info("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START) +
                                 " UPDATE " + address +
                                 // ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
+                                ", epoch=" + stats.getEpoch() +
+                                ", token=" + stats.tokens() +
                                 ", active=" + stats.getActiveCount() +
                                 ", ms=" + stats.intervalTimeMs() +
                                 ", threads=" + stats.getDomainThreads() +
-                                ", avg=" + stats.getAvgResponseMs() +
+                                ", avg=" + stats.getAvgRTMs() +
                                 ", suc=" + stats.getNumberOfSuccesses() +
                                 ", fai=" + stats.getNumberOfFailures() +
                                 ", tpt=" + stats.getThroughput() +

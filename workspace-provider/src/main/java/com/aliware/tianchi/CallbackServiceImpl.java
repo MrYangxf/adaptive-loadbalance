@@ -88,8 +88,8 @@ public class CallbackServiceImpl implements CallbackService {
                                         .add("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
                                         .add("act=" + snapshot.getActiveCount())
                                         .add("ms=" + snapshot.intervalTimeMs())
-                                        .add("time=" + snapshot.getAvgResponseMs() * snapshot.getNumberOfSuccesses())
-                                        .add("avg=" + snapshot.getAvgResponseMs())
+                                        .add("time=" + snapshot.getAvgRTMs() * snapshot.getNumberOfSuccesses())
+                                        .add("avg=" + snapshot.getAvgRTMs())
                                         .add("suc=" + snapshot.getNumberOfSuccesses())
                                         .add("cpu=" + s)
                                         .add("run=" + snapshot.getServerStats().getRuntimeInfo())
@@ -138,9 +138,7 @@ public class CallbackServiceImpl implements CallbackService {
             } else if (other > weightCache) {
                 weight = other;
                 weightCache = weight;
-            } else {
-                weight = weightCache * 1.5;
-            } 
+            }
 
             logger.info(new StringJoiner(", ")
                                 .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
@@ -159,22 +157,25 @@ public class CallbackServiceImpl implements CallbackService {
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
                         for (String serviceId : serviceIds) {
+                            if (!serviceId.contains("hash")) {
+                                continue;
+                            }
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             snapshot.setEpoch(epoch);
-                            // int threads = snapshot.getDomainThreads();
-                            // if (weight < threads / 2) {
-                            //     weight = threads * .9;
-                            //     weightCache = other;
-                            // }
-                            snapshot.setWeight(weight);
+                            int threads = snapshot.getDomainThreads();
+                            if (weight < threads / 2) {
+                                weight = threads * .7;
+                                weightCache = other;
+                            }
+                            snapshot.setWeight(weight * 1);
                             listener.receiveServerMsg(snapshot.toString());
                             logger.info(new StringJoiner(", ")
                                                 .add("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
                                                 .add("act=" + snapshot.getActiveCount())
-                                                .add("w=" + weight)
+                                                .add("weight=" + weight)
                                                 .add("wCache=" + weightCache)
-                                                .add("time=" + snapshot.getAvgResponseMs() * snapshot.getNumberOfSuccesses())
-                                                .add("avg=" + snapshot.getAvgResponseMs())
+                                                .add("time=" + snapshot.getAvgRTMs() * snapshot.getNumberOfSuccesses())
+                                                .add("avg=" + snapshot.getAvgRTMs())
                                                 .add("suc=" + snapshot.getNumberOfSuccesses())
                                                 .add("cpu=" + s)
                                                 .add("run=" + snapshot.getServerStats().getRuntimeInfo())
