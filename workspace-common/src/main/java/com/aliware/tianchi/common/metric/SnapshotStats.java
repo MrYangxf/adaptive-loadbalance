@@ -30,7 +30,7 @@ public abstract class SnapshotStats implements Serializable {
     public SnapshotStats(double weight, long epoch, double avgRTMs) {
         this.weight = weight;
         this.epoch = epoch;
-        token.lazySet((long) weight + 1L);
+        token.lazySet((long) weight);
         this.avgRTMs = avgRTMs;
     }
 

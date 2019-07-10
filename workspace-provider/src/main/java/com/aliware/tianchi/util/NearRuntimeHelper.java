@@ -1,7 +1,6 @@
 package com.aliware.tianchi.util;
 
 import com.aliware.tianchi.common.conf.Configuration;
-import com.aliware.tianchi.common.metric.CountWindowInstanceStats;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.ServerStats;
 import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
@@ -13,7 +12,6 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
@@ -40,7 +38,9 @@ public class NearRuntimeHelper {
 
     private final ScheduledExecutorService scheduledExecutor;
 
-    private volatile AtomicLong epoch;
+    private AtomicLong epoch;
+
+    private int threads = 200;
 
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
@@ -76,6 +76,10 @@ public class NearRuntimeHelper {
         }
     }
 
+    public int getThreads() {
+        return threads;
+    }
+
     public RuntimeInfo getRuntimeInfo() {
         return current;
     }
@@ -90,7 +94,7 @@ public class NearRuntimeHelper {
                 if (stats == null) {
                     String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
                     int nThreads = Integer.parseInt(nThreadsString);
-                    stats = newStats(DubboUtil.getIpAddress(invoker), nThreads);
+                    stats = newStats(DubboUtil.getIpAddress(invoker), threads = nThreads);
                     epoch = new AtomicLong(1);
                 }
             }

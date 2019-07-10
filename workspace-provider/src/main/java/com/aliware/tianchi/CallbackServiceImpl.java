@@ -17,7 +17,6 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
@@ -57,8 +56,6 @@ public class CallbackServiceImpl implements CallbackService {
 
     private volatile double weightCache;
 
-    private final AtomicInteger counter = new AtomicInteger();
-
     private volatile long previousMillis = System.currentTimeMillis();
 
     private void _updateAndNotify(boolean clean) {
@@ -77,29 +74,25 @@ public class CallbackServiceImpl implements CallbackService {
                                                                         .getAdaptiveExtension();
 
             TestThreadPool.ThreadStats threadStats = threadPool.getThreadStats();
-            int qwaits = threadStats.queues(), sem = threadStats.waits(), other = threadStats.works();
+            int queues = threadStats.queues(), waits = threadStats.waits(), works = threadStats.works();
 
             double weight = 0;
 
-            if (sem > 0) {
-                weight = other;
+            if (waits > 0) {
+                weight = works;
                 weightCache = weight;
                 previousMillis = System.currentTimeMillis();
-            } else if (MathUtil.isApproximate(other, weightCache, 10)) {
+            } else if (MathUtil.isApproximate(works, weightCache, 10)) {
                 weight = weightCache;
-            } else if (other > weightCache) {
-                weight = other;
+            } else if (works > weightCache) {
+                weight = works;
                 weightCache = weight;
-            } else if (System.currentTimeMillis() < previousMillis + 3000) {
+            } else if (System.currentTimeMillis() < previousMillis + 2500) {
                 weight = weightCache;
+            } else {
+                weight = helper.getThreads();
+                weightCache = works;
             }
-
-            logger.info(new StringJoiner(", ")
-                                .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
-                                .add("qwaits=" + qwaits)
-                                .add("sem=" + sem)
-                                .add("other=" + other)
-                                .toString());
 
             // notify 
             for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
@@ -114,19 +107,18 @@ public class CallbackServiceImpl implements CallbackService {
                             }
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             snapshot.setEpoch(epoch);
-                            int threads = snapshot.getDomainThreads();
-                            if (weight < threads / 2) {
-                                weight = threads * 1;
-                                weightCache = other;
-                            }
-                            snapshot.setWeight(weight * 1);
+                            snapshot.setWeight(weight);
                             listener.receiveServerMsg(snapshot.toString());
                             logger.info(new StringJoiner(", ")
-                                                .add("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
+                                                .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
+                                                .add("epoch=" + epoch)
                                                 .add("act=" + snapshot.getActiveCount())
+                                                .add("queues=" + queues)
+                                                .add("waits=" + waits)
+                                                .add("works=" + works)
                                                 .add("weight=" + weight)
                                                 .add("wCache=" + weightCache)
-                                                .add("time=" + snapshot.getAvgRTMs() * snapshot.getNumberOfSuccesses())
+                                                .add("duration=" + snapshot.getAvgRTMs() * snapshot.getNumberOfSuccesses())
                                                 .add("avg=" + snapshot.getAvgRTMs())
                                                 .add("suc=" + snapshot.getNumberOfSuccesses())
                                                 .add("run=" + snapshot.getServerStats().getRuntimeInfo())
