@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -38,7 +39,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class CallbackServiceImpl implements CallbackService {
 
-    static final long START = System.nanoTime();
+    private static long START = 0;
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
@@ -65,50 +66,14 @@ public class CallbackServiceImpl implements CallbackService {
         listeners.put(key, listener);
     }
 
-    public static void notifyStats(SnapshotStats snapshot) {
-        NearRuntimeHelper.INSTANCE
-                .getScheduledExecutor()
-                .schedule(() -> _notifyStats(snapshot), 0, TimeUnit.MILLISECONDS);
-    }
-
-    private static void _notifyStats(SnapshotStats snapshot) {
-        try {
-            NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
-            helper.updateRuntimeInfo();
-            long processCpuTime = OSUtil.getProcessCpuTime();
-            long cpus = TimeUnit.NANOSECONDS.toMillis(processCpuTime);
-            long s = cpus - cpuTime;
-            cpuTime = cpus;
-            // notify 
-            for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
-                try {
-                    CallbackListener listener = entry.getValue();
-                    listener.receiveServerMsg(snapshot.toString());
-                    logger.info(new StringJoiner(", ")
-                                        .add("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
-                                        .add("act=" + snapshot.getActiveCount())
-                                        .add("ms=" + snapshot.intervalTimeMs())
-                                        .add("time=" + snapshot.getAvgRTMs() * snapshot.getNumberOfSuccesses())
-                                        .add("avg=" + snapshot.getAvgRTMs())
-                                        .add("suc=" + snapshot.getNumberOfSuccesses())
-                                        .add("cpu=" + s)
-                                        .add("run=" + snapshot.getServerStats().getRuntimeInfo())
-                                        .toString());
-                } catch (Throwable t) {
-                    logger.error("send error", t);
-                }
-            }
-        } catch (Throwable throwable) {
-            logger.error("schedule error", throwable);
-        }
-    }
-
-    private volatile static long cpuTime = 0;
-
     private volatile static double weightCache;
 
-    private static void _updateAndNotify(boolean clean) {
+    private static final AtomicInteger counter = new AtomicInteger();
 
+    private static void _updateAndNotify(boolean clean) {
+        if (START == 0) {
+            START = System.nanoTime();
+        }
         try {
 
             long epoch = EPOCH.getAndIncrement();
@@ -117,12 +82,6 @@ public class CallbackServiceImpl implements CallbackService {
             NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
             helper.updateRuntimeInfo();
 
-            long processCpuTime = OSUtil.getProcessCpuTime();
-            long cpus = TimeUnit.NANOSECONDS.toMillis(processCpuTime);
-            long s = cpus - cpuTime;
-            cpuTime = cpus;
-
-
             TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
                                                                         .getAdaptiveExtension();
 
@@ -130,15 +89,21 @@ public class CallbackServiceImpl implements CallbackService {
             int qwaits = threadStats.queues(), sem = threadStats.waits(), other = threadStats.works();
 
             double weight = 0;
+
             if (sem > 0) {
                 weight = other;
                 weightCache = weight;
-            } else if (MathUtil.isApproximate(other, weightCache, 10)) {
+                counter.lazySet(10);
+            } else if (counter.decrementAndGet() < 0) {
+                if (MathUtil.isApproximate(other, weightCache, 10)) {
+                    weight = weightCache;
+                } else if (other > weightCache) {
+                    weight = other;
+                    weightCache = weight;
+                }
+            } else {
                 weight = weightCache;
-            } else if (other > weightCache) {
-                weight = other;
-                weightCache = weight;
-            }
+            } 
 
             logger.info(new StringJoiner(", ")
                                 .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
@@ -152,8 +117,6 @@ public class CallbackServiceImpl implements CallbackService {
                 try {
                     InstanceStats instanceStats = helper.getInstanceStats();
                     if (nonNull(instanceStats)) {
-                        int activeCount = helper.getActiveCount();
-                        instanceStats.setActiveCount(activeCount);
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
                         for (String serviceId : serviceIds) {
@@ -164,7 +127,7 @@ public class CallbackServiceImpl implements CallbackService {
                             snapshot.setEpoch(epoch);
                             int threads = snapshot.getDomainThreads();
                             if (weight < threads / 2) {
-                                weight = threads * .7;
+                                weight = threads * .8;
                                 weightCache = other;
                             }
                             snapshot.setWeight(weight * 1);
@@ -177,10 +140,8 @@ public class CallbackServiceImpl implements CallbackService {
                                                 .add("time=" + snapshot.getAvgRTMs() * snapshot.getNumberOfSuccesses())
                                                 .add("avg=" + snapshot.getAvgRTMs())
                                                 .add("suc=" + snapshot.getNumberOfSuccesses())
-                                                .add("cpu=" + s)
                                                 .add("run=" + snapshot.getServerStats().getRuntimeInfo())
                                                 .toString());
-
                         }
                     }
                 } catch (Throwable t) {

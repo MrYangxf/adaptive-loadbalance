@@ -22,9 +22,8 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 public class TestThreadPool implements ThreadPool {
 
     private final Map<String, Thread> threadMap = new ConcurrentHashMap<>();
-
-    private final Lock lock = new ReentrantLock();
-    private StatsThreadPoolExecutor executor;
+    
+    private ThreadPoolExecutor executor;
     
     @Override
     public synchronized Executor getExecutor(URL url) {
@@ -36,20 +35,12 @@ public class TestThreadPool implements ThreadPool {
         int threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
         int queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);
         executor =
-                new StatsThreadPoolExecutor(lock, threads, threads, 0, TimeUnit.MILLISECONDS,
+                new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
                                             queues == 0 ? new SynchronousQueue<>() :
                                                     (queues < 0 ? new LinkedBlockingQueue<>()
                                                             : new LinkedBlockingQueue<>(queues)),
                                             new StatsNamedThreadFactory(name, true), new AbortPolicyWithReport(name, url));
         return executor;
-    }
-
-    public void lock() {
-        lock.lock();
-    }
-
-    public void unlock() {
-        lock.unlock();
     }
 
     public ThreadStats getThreadStats() {
