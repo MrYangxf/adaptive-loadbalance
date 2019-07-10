@@ -91,7 +91,7 @@ public class CallbackServiceImpl implements CallbackService {
                 weight = weightCache;
             }
 
-            if (weight < helper.getThreads()) {
+            if (weight < helper.getThreads() / 2) {
                 weight = helper.getThreads();
                 weightCache = works;
             }
