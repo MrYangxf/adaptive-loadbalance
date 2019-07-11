@@ -90,7 +90,7 @@ public class CallbackServiceImpl implements CallbackService {
             } else if (System.currentTimeMillis() < previousMillis + 2500) {
                 weight = weightCache;
             } else {
-                weight *= 1.3;
+                weight *= 1.4;
                 weightCache = works;
             }
 

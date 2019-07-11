@@ -67,7 +67,11 @@ public class Sequence
     public long addAndGet(final long increment) {
         return UNSAFE.getAndAddLong(this, VALUE_OFFSET, increment) + increment;
     }
-
+    
+    public long getAndAdd(final long increment) {
+        return UNSAFE.getAndAddLong(this, VALUE_OFFSET, increment);
+    }
+    
     @Override
     public String toString() {
         return getKey() + ":" + getValue();

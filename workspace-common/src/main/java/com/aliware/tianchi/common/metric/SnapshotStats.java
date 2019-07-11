@@ -1,6 +1,7 @@
 package com.aliware.tianchi.common.metric;
 
 import com.aliware.tianchi.common.util.RuntimeInfo;
+import com.aliware.tianchi.common.util.Sequence;
 
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,21 +18,23 @@ public abstract class SnapshotStats implements Serializable {
     private static final String GROUP_SEPARATOR = "@";
 
     private volatile double weight;
-    
+
     private volatile long epoch;
-    
+
     private volatile double avgRTMs;
 
-    private AtomicLong token = new AtomicLong();
+    private Sequence token;
 
     public SnapshotStats() {
+        this(0, 0, 0);
     }
-    
+
     public SnapshotStats(double weight, long epoch, double avgRTMs) {
         this.weight = weight;
         this.epoch = epoch;
-        token.lazySet((long) weight);
         this.avgRTMs = avgRTMs;
+        token = new Sequence(epoch);
+        token.setValue((long) weight);
     }
 
     public static SnapshotStats fromString(String text) {
@@ -147,12 +150,12 @@ public abstract class SnapshotStats implements Serializable {
     }
 
     public boolean acquireToken() {
-        long n = token.get();
+        long n = token.getValue();
         while (n > 0) {
-            if (token.compareAndSet(n, n - 1)) {
+            if (token.compareAndSetValue(n, n - 1)) {
                 return true;
             }
-            n = token.get();
+            n = token.getValue();
         }
         return false;
     }
@@ -160,15 +163,15 @@ public abstract class SnapshotStats implements Serializable {
     public long releaseToken() {
         return token.incrementAndGet();
     }
-    
+
     public long tokens() {
-        return token.get();
+        return token.getValue();
     }
-    
+
     public void addTokens(long tokens) {
         token.getAndAdd(tokens);
     }
-    
+
     public long getEpoch() {
         return epoch;
     }
