@@ -69,7 +69,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             queue.offer(stats);
         }
 
-        // Queue<SnapshotStats> idleQueue = null;
+        Queue<SnapshotStats> idleQueue = null;
         for (int mask = 0x00000001; ; ) {
             SnapshotStats stats = queue.poll();
             if (isNull(stats)) {
@@ -81,13 +81,13 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 if ((ThreadLocalRandom.current().nextInt() & mask) == 0) {
                     stats.releaseToken();
 
-                    // if (isNull(idleQueue)) {
-                    //     idleQueue = size > HEAP_THRESHOLD ?
-                    //             new PriorityQueue<>(idleComparator) :
-                    //             new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
-                    // }
-                    //
-                    // idleQueue.offer(stats);
+                    if (isNull(idleQueue)) {
+                        idleQueue = size > HEAP_THRESHOLD ?
+                                new PriorityQueue<>(idleComparator) :
+                                new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
+                    }
+
+                    idleQueue.offer(stats);
                     mask = (mask << 1) | mask;
                     continue;
                 }
@@ -114,21 +114,19 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
         }
 
-        // while (nonNull(idleQueue)) {
-        //     SnapshotStats stats = idleQueue.poll();
-        //     if (isNull(stats)) {
-        //         break;
-        //     }
-        //     if (stats.acquireToken()) {
-        //         invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
-        //         return mapping.get(stats.getAddress());
-        //     }
-        // }
-
-
+        while (nonNull(idleQueue)) {
+            SnapshotStats stats = idleQueue.poll();
+            if (isNull(stats)) {
+                break;
+            }
+            if (stats.acquireToken()) {
+                invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
+                return mapping.get(stats.getAddress());
+            }
+        }
+        
         return invokers.get(ThreadLocalRandom.current().nextInt(size));
         // logger.info("all providers are overloaded");
-
         // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
     }
 }
