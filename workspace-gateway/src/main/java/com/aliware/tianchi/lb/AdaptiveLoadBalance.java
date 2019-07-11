@@ -125,8 +125,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
         }
 
-        logger.info("all providers are overloaded");
 
-        throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
+        return invokers.get(ThreadLocalRandom.current().nextInt(size));
+        // logger.info("all providers are overloaded");
+
+        // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
     }
 }
