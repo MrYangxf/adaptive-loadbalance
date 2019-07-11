@@ -130,25 +130,25 @@ public class AdaptiveLoadBalance implements LoadBalance {
         
         // weighted random ?
         
-        // double total = 0d;
-        // double[] weights = new double[size];
-        // for (int i = 0; i < size; i++) {
-        //     SnapshotStats stats = statsList.get(i);
-        //     double weight = stats.getDomainThreads();
-        //     total += weight;
-        //     weights[i] = total;
-        // }
-        //
-        // if (total == 0) {
-        //     return invokers.get(ThreadLocalRandom.current().nextInt(size));
-        // }
-        //
-        // double r = ThreadLocalRandom.current().nextDouble(total);
-        // for (int i = 0; i < size; i++) {
-        //     if (r < weights[i]) {
-        //         return invokers.get(i);
-        //     }
-        // }
+        double total = 0d;
+        double[] weights = new double[size];
+        for (int i = 0; i < size; i++) {
+            SnapshotStats stats = statsList.get(i);
+            double weight = stats.getDomainThreads();
+            total += weight;
+            weights[i] = total;
+        }
+
+        if (total == 0) {
+            return invokers.get(ThreadLocalRandom.current().nextInt(size));
+        }
+
+        double r = ThreadLocalRandom.current().nextDouble(total);
+        for (int i = 0; i < size; i++) {
+            if (r < weights[i]) {
+                return invokers.get(i);
+            }
+        }
 
         return invokers.get(ThreadLocalRandom.current().nextInt(size));
         // logger.info("all providers are overloaded");
