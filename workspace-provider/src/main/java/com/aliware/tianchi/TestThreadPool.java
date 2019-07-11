@@ -47,6 +47,12 @@ public class TestThreadPool implements ThreadPool {
         int queues = 0, waits = 0, other = 0;
         for (Map.Entry<String, Thread> entry : threadMap.entrySet()) {
             Thread t = entry.getValue();
+
+            if (!t.isAlive()) {
+                threadMap.remove(entry.getKey());
+                continue;
+            }
+            
             Thread.State state = t.getState();
             if (state == Thread.State.WAITING ||
                 state == Thread.State.TIMED_WAITING) {

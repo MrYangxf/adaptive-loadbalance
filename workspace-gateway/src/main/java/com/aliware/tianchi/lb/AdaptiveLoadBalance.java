@@ -59,6 +59,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             return invokers.get(ThreadLocalRandom.current().nextInt(size));
         }
 
+        List<SnapshotStats> statsList = new ArrayList<>(size);
         for (Invoker<T> invoker : invokers) {
             String address = DubboUtil.getIpAddress(invoker);
             SnapshotStats stats = instanceStatsMap.get(address);
@@ -66,7 +67,9 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
             mapping.put(address, invoker);
+            // todo:
             queue.offer(stats);
+            statsList.add(stats);
         }
 
         Queue<SnapshotStats> idleQueue = null;
@@ -125,6 +128,28 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
         }
         
+        // weighted random ?
+        
+        // double total = 0d;
+        // double[] weights = new double[size];
+        // for (int i = 0; i < size; i++) {
+        //     SnapshotStats stats = statsList.get(i);
+        //     double weight = stats.getDomainThreads();
+        //     total += weight;
+        //     weights[i] = total;
+        // }
+        //
+        // if (total == 0) {
+        //     return invokers.get(ThreadLocalRandom.current().nextInt(size));
+        // }
+        //
+        // double r = ThreadLocalRandom.current().nextDouble(total);
+        // for (int i = 0; i < size; i++) {
+        //     if (r < weights[i]) {
+        //         return invokers.get(i);
+        //     }
+        // }
+
         return invokers.get(ThreadLocalRandom.current().nextInt(size));
         // logger.info("all providers are overloaded");
         // throw new RpcException(RpcException.BIZ_EXCEPTION, "all providers are overloaded");
