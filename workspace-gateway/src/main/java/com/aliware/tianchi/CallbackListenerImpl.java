@@ -4,12 +4,9 @@ import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.lb.metric.LBStatistics;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 
-import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 
@@ -35,13 +32,13 @@ public class CallbackListenerImpl implements CallbackListener {
 
                 LBStatistics lbStatistics = LBStatistics.INSTANCE;
                 lbStatistics.updateInstanceStats(serviceId, address, stats);
-                
+
 
                 if (serviceId.contains("hash")) {
                     logger.info("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START) +
                                 " UPDATE " + address +
-                                // ", waits=" + LBStatistics.INSTANCE.getWaits(address) +
                                 ", epoch=" + stats.getEpoch() +
+                                ", weight=" + stats.getWeight() +
                                 ", token=" + stats.tokens() +
                                 ", active=" + stats.getActiveCount() +
                                 ", ms=" + stats.intervalTimeMs() +

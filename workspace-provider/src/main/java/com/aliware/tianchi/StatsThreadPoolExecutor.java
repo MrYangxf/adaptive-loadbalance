@@ -2,13 +2,14 @@ package com.aliware.tianchi;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * @author yangxf
  */
 public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
 
-    private final AtomicLong counter = new AtomicLong();
+    private final LongAdder counter = new LongAdder();
 
     public StatsThreadPoolExecutor(int corePoolSize,
                                    int maximumPoolSize,
@@ -28,12 +29,12 @@ public class StatsThreadPoolExecutor extends ThreadPoolExecutor {
     @Override
     protected void beforeExecute(Thread t, Runnable r) {
         super.beforeExecute(t, r);
-        counter.getAndIncrement();
+        counter.increment();
     }
 
     @Override
     protected void afterExecute(Runnable r, Throwable t) {
-        counter.getAndDecrement();
+        counter.decrement();
         super.afterExecute(r, t);
     }
 }
