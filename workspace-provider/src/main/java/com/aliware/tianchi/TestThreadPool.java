@@ -35,7 +35,7 @@ public class TestThreadPool implements ThreadPool {
         int threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
         int queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);
         executor =
-                new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
+                new StatsThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
                                             queues == 0 ? new SynchronousQueue<>() :
                                                     (queues < 0 ? new LinkedBlockingQueue<>()
                                                             : new LinkedBlockingQueue<>(queues)),
