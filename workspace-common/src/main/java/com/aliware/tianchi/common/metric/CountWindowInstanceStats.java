@@ -300,15 +300,4 @@ public class CountWindowInstanceStats implements InstanceStats {
 
         return sum;
     }
-
-    public static void main(String[] args) {
-        CountWindowInstanceStats stats = new CountWindowInstanceStats("a", new ServerStats("a"), 10);
-
-        for (int i = 1; i < 20; i++) {
-            stats.success("ok", 2);
-        }
-
-        SnapshotStats ok = stats.snapshot("ok");
-        System.out.println(ok);
-    }
 }

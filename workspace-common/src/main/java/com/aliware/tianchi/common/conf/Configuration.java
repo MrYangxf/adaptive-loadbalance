@@ -2,28 +2,23 @@ package com.aliware.tianchi.common.conf;
 
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.RingCounter;
-import com.aliware.tianchi.common.util.RuntimeInfo;
 import com.aliware.tianchi.common.util.SegmentCounterFactory;
-import com.aliware.tianchi.common.util.SkipListCounter;
 
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.concurrent.TimeUnit;
-
-import static com.aliware.tianchi.common.util.MathUtil.isApproximate;
-import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * @author yangxf
  */
 public class Configuration implements Serializable {
     private static final long serialVersionUID = -420784964533522751L;
-    
+
     /**
      * 平均响应时间误差范围ms
      */
     private static final int ERROR_RANGE = 0;
-    
+
     /**
      * 请求数占生产者线程池的最大比例 0~1
      */
@@ -48,14 +43,14 @@ public class Configuration implements Serializable {
     private SegmentCounterFactory counterFactory = () -> new RingCounter(1024);
 
     private boolean openAvgRT = true;
-    
+
     private boolean openThroughput = false;
 
     /**
      * 开启运行时信息统计
      */
     private boolean openRuntimeStats = false;
-    
+
     /**
      * 进程运行时信息统计队列大小
      */
@@ -184,39 +179,4 @@ public class Configuration implements Serializable {
         this.openThroughput = openThroughput;
         return this;
     }
-    // public static final Comparator<SnapshotStats> LOAD_FIRST = (o1, o2) -> {
-    //     long a1 = o1.getAvgResponseMs(),
-    //             a2 = o2.getAvgResponseMs();
-    //
-    //     if (isApproximate(a1, a2, ERROR_RANGE)) {
-    //         RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
-    //                 r2 = o2.getServerStats().getRuntimeInfo();
-    //         if (nonNull(r1) && nonNull(r2)) {
-    //             double d = (1 - r1.getProcessCpuLoad()) * r1.getAvailableProcessors() -
-    //                        (1 - r2.getProcessCpuLoad()) * r2.getAvailableProcessors();
-    //             return d > 0 ? -1 : d < 0 ? 1 : 0;
-    //         }
-    //     }
-    //
-    //     return (int) (a1 - a2);
-    // };
-    //
-    // public static final Comparator<SnapshotStats> THREADS_FIRST = (o1, o2) -> {
-    //     long a1 = o1.getAvgResponseMs(),
-    //             a2 = o2.getAvgResponseMs();
-    //
-    //     if (isApproximate(a1, a2, ERROR_RANGE)) {
-    //         RuntimeInfo r1 = o1.getServerStats().getRuntimeInfo(),
-    //                 r2 = o2.getServerStats().getRuntimeInfo();
-    //         int idles1 = o1.getDomainThreads() - o1.getActiveCount(),
-    //                 idles2 = o2.getDomainThreads() - o2.getActiveCount();
-    //         if (nonNull(r1) && nonNull(r2)) {
-    //             idles1 /= r1.getAvailableProcessors();
-    //             idles2 /= r2.getAvailableProcessors();
-    //         }
-    //         return idles2 - idles1;
-    //     }
-    //
-    //     return (int) (a1 - a2);
-    // };
 }
