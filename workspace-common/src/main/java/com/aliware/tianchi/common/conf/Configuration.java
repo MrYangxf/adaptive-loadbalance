@@ -6,6 +6,7 @@ import com.aliware.tianchi.common.util.SegmentCounterFactory;
 
 import java.io.Serializable;
 import java.util.Comparator;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -36,7 +37,7 @@ public class Configuration implements Serializable {
      */
     private long windowSizeOfStats = 4;
 
-    private long timeIntervalOfStats = 100;
+    private long timeIntervalOfStats = 50;
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
@@ -63,6 +64,11 @@ public class Configuration implements Serializable {
 
     private long statsPushDelayMs = 100;
 
+    public boolean isLogger() {
+        // return  (ThreadLocalRandom.current().nextInt() & 511) == 0;
+        return false;
+    }
+    
     public double getMaxRateOfWaitingRequests() {
         return maxRateOfWaitingRequests;
     }

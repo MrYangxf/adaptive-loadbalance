@@ -9,22 +9,21 @@ import org.apache.dubbo.common.threadpool.support.AbortPolicyWithReport;
 
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.LockSupport;
-import java.util.concurrent.locks.ReentrantLock;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
+ * todo:
  * @author yangxf
  */
 @Adaptive
 public class TestThreadPool implements ThreadPool {
 
     private final Map<String, Thread> threadMap = new ConcurrentHashMap<>();
-    
+
     private ThreadPoolExecutor executor;
-    
+
     @Override
     public synchronized Executor getExecutor(URL url) {
         if (executor != null) {
@@ -44,35 +43,36 @@ public class TestThreadPool implements ThreadPool {
     }
 
     public ThreadStats getThreadStats() {
-        int queues = 0, waits = 0, other = 0;
+        int queues = 0, waits = 0, works = 0;
         for (Map.Entry<String, Thread> entry : threadMap.entrySet()) {
             Thread t = entry.getValue();
-
             if (!t.isAlive()) {
                 threadMap.remove(entry.getKey());
                 continue;
             }
-            
+
             Thread.State state = t.getState();
-            if (state == Thread.State.WAITING ||
-                state == Thread.State.TIMED_WAITING) {
-                Object blocker = LockSupport.getBlocker(t);
-                if (nonNull(blocker)) {
-                    String bName = blocker.getClass().getName();
-                    if (bName.startsWith("java.util.concurrent.SynchronousQueue")) {
-                        queues++;
-                    } else {
-                        waits++;
-                    }
-                    continue;
+            if (state != Thread.State.WAITING &&
+                state != Thread.State.TIMED_WAITING) {
+                works++;
+                continue;
+            }
+
+            Object blocker = LockSupport.getBlocker(t);
+            if (nonNull(blocker)) {
+                Class<?> bClass = blocker.getClass();
+                Class<?> declaringClass = bClass.getDeclaringClass();
+                if (declaringClass == SynchronousQueue.class) {
+                    queues++;
+                } else {
+                    waits++;
                 }
             }
-            other++;
         }
 
         int finalQueues = queues;
         int finalWaits = waits;
-        int finalOther = other;
+        int finalWorks = works;
         return new ThreadStats() {
             @Override
             public int queues() {
@@ -86,7 +86,7 @@ public class TestThreadPool implements ThreadPool {
 
             @Override
             public int works() {
-                return finalOther;
+                return finalWorks;
             }
         };
     }
@@ -100,7 +100,7 @@ public class TestThreadPool implements ThreadPool {
         public Thread newThread(Runnable runnable) {
             Thread thread = super.newThread(runnable);
             threadMap.put(thread.getName(), thread);
-            return threadMap.putIfAbsent(thread.getName(), thread);
+            return thread;
         }
     }
 

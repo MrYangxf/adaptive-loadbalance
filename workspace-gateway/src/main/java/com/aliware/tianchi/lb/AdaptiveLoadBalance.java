@@ -96,7 +96,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 }
 
                 String address = stats.getAddress();
-                if ((ThreadLocalRandom.current().nextInt() & 511) == 0) {
+                if (conf.isLogger()) {
                     logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start) +
                                 ", select " + address +
                                 ", epoch=" + stats.getEpoch() +
