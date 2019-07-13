@@ -11,10 +11,12 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.LockSupport;
 
+import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * todo:
+ *
  * @author yangxf
  */
 @Adaptive
@@ -29,7 +31,7 @@ public class TestThreadPool implements ThreadPool {
         if (executor != null) {
             return executor;
         }
-        
+
         String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);
         int threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
         int queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);
@@ -52,21 +54,20 @@ public class TestThreadPool implements ThreadPool {
             }
 
             Thread.State state = t.getState();
+            Object blocker;
             if (state != Thread.State.WAITING &&
-                state != Thread.State.TIMED_WAITING) {
+                state != Thread.State.TIMED_WAITING ||
+                isNull(blocker = LockSupport.getBlocker(t))) {
                 works++;
                 continue;
             }
-
-            Object blocker = LockSupport.getBlocker(t);
-            if (nonNull(blocker)) {
-                Class<?> bClass = blocker.getClass();
-                Class<?> declaringClass = bClass.getDeclaringClass();
-                if (declaringClass == SynchronousQueue.class) {
-                    queues++;
-                } else {
-                    waits++;
-                }
+            
+            Class<?> bClass = blocker.getClass();
+            Class<?> declaringClass = bClass.getDeclaringClass();
+            if (declaringClass == SynchronousQueue.class) {
+                queues++;
+            } else {
+                waits++;
             }
         }
 
