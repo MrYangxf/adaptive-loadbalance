@@ -33,12 +33,17 @@ public class AdaptiveLoadBalance implements LoadBalance {
 
     private final Comparator<SnapshotStats> comparator;
     private final Comparator<SnapshotStats> idleComparator;
+    
+    private final ThreadLocal<Queue<SnapshotStats>> localQueue;
+    private final ThreadLocal<Queue<SnapshotStats>> localIdleQueue;
 
     public AdaptiveLoadBalance(Configuration conf) {
         checkNotNull(conf, "conf");
         this.conf = conf;
         comparator = Comparator.comparingDouble(SnapshotStats::getAvgRTMs);
         idleComparator = Comparator.comparingLong(SnapshotStats::tokens);
+        localQueue = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, comparator));
+        localIdleQueue = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, idleComparator));
     }
 
     @Override
@@ -48,9 +53,11 @@ public class AdaptiveLoadBalance implements LoadBalance {
         LBStatistics lbStatistics = LBStatistics.INSTANCE;
         Map<String, Invoker<T>> mapping = new HashMap<>();
 
-        Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ?
-                new PriorityQueue<>(comparator) :
-                new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator);
+        // Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ?
+        //         new PriorityQueue<>(comparator) :
+        //         new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator);
+
+        Queue<SnapshotStats> queue = localQueue.get();
 
         String serviceId = DubboUtil.getServiceId(invokers.get(0), invocation);
 
@@ -85,9 +92,10 @@ public class AdaptiveLoadBalance implements LoadBalance {
                     stats.releaseToken();
 
                     if (isNull(idleQueue)) {
-                        idleQueue = size > HEAP_THRESHOLD ?
-                                new PriorityQueue<>(idleComparator) :
-                                new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
+                        // idleQueue = size > HEAP_THRESHOLD ?
+                        //         new PriorityQueue<>(idleComparator) :
+                        //         new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
+                        idleQueue = localIdleQueue.get();
                     }
 
                     idleQueue.offer(stats);
@@ -113,6 +121,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 }
 
                 invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
+                queue.clear();
                 return mapping.get(address);
             }
         }
@@ -124,6 +133,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
             }
             if (stats.acquireToken()) {
                 invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
+                idleQueue.clear();
                 return mapping.get(stats.getAddress());
             }
         }
