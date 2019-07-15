@@ -104,22 +104,6 @@ public class AdaptiveLoadBalance implements LoadBalance {
                 }
 
                 String address = stats.getAddress();
-                if (conf.isLogger()) {
-                    logger.info(TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start) +
-                                ", select " + address +
-                                ", epoch=" + stats.getEpoch() +
-                                ", tokens=" + stats.tokens() +
-                                ", active=" + stats.getActiveCount() +
-                                ", threads=" + stats.getDomainThreads() +
-                                ", avg=" + stats.getAvgRTMs() +
-                                ", suc=" + stats.getNumberOfSuccesses() +
-                                ", fai=" + stats.getNumberOfFailures() +
-                                ", tpt=" + stats.getThroughput() +
-                                (conf.isOpenRuntimeStats() ?
-                                        ", load=" + stats.getServerStats().getRuntimeInfo().getProcessCpuLoad() : "")
-                               );
-                }
-
                 invocation.getAttachments().put("CURRENT_STATS_EPOCH", stats.getEpoch() + "");
                 queue.clear();
                 return mapping.get(address);

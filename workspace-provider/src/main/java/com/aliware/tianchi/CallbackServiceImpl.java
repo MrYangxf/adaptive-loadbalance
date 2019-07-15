@@ -78,16 +78,15 @@ public class CallbackServiceImpl implements CallbackService {
 
             double weight = 0;
 
-            if (waits > 0) {
+            if (waits > 5) {
                 weight = works;
                 weightCache = weight;
                 previousMillis = System.currentTimeMillis();
-            } else if (MathUtil.isApproximate(works, weightCache, 10)) {
-                weight = weightCache;
             } else if (works > weightCache) {
                 weight = works;
                 weightCache = weight;
-            } else if (System.currentTimeMillis() < previousMillis + 2500) {
+            } else if (MathUtil.isApproximate(works, weightCache, 10) ||
+                       System.currentTimeMillis() < previousMillis + 2500) {
                 weight = weightCache;
             } else {
                 // weight = 1.4 * weightCache;
