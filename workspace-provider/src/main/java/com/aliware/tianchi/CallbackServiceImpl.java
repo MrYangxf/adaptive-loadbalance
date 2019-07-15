@@ -78,7 +78,7 @@ public class CallbackServiceImpl implements CallbackService {
 
             double weight = 0;
 
-            if (waits > 5) {
+            if (waits > 0) {
                 weight = works;
                 weightCache = weight;
                 previousMillis = System.currentTimeMillis();

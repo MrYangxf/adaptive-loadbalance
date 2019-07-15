@@ -6,13 +6,14 @@ import org.apache.dubbo.common.extension.Adaptive;
 import org.apache.dubbo.common.threadlocal.NamedInternalThreadFactory;
 import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.common.threadpool.support.AbortPolicyWithReport;
+import org.apache.dubbo.common.utils.ConcurrentHashSet;
 
-import java.util.Map;
+import java.lang.reflect.Field;
+import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.LockSupport;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
-import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 
 /**
  * todo:
@@ -22,9 +23,11 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
 @Adaptive
 public class TestThreadPool implements ThreadPool {
 
-    private final Map<String, Thread> threadMap = new ConcurrentHashMap<>();
+    private final Set<Thread> threadSet = new ConcurrentHashSet<>();
 
     private ThreadPoolExecutor executor;
+
+    private Object maybeBlocker;
 
     @Override
     public synchronized Executor getExecutor(URL url) {
@@ -35,21 +38,22 @@ public class TestThreadPool implements ThreadPool {
         String name = url.getParameter(Constants.THREAD_NAME_KEY, Constants.DEFAULT_THREAD_NAME);
         int threads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
         int queues = url.getParameter(Constants.QUEUES_KEY, Constants.DEFAULT_QUEUES);
-        executor =
-                new StatsThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
-                                            queues == 0 ? new SynchronousQueue<>() :
-                                                    (queues < 0 ? new LinkedBlockingQueue<>()
-                                                            : new LinkedBlockingQueue<>(queues)),
-                                            new StatsNamedThreadFactory(name, true), new AbortPolicyWithReport(name, url));
+        BlockingQueue<Runnable> workQueue = queues == 0 ? new SynchronousQueue<>() :
+                (queues < 0 ? new LinkedBlockingQueue<>() : new LinkedBlockingQueue<>(queues));
+        maybeBlocker = getMaybeBlocker(workQueue);
+        executor = new StatsThreadPoolExecutor(threads, threads,
+                                               0, TimeUnit.MILLISECONDS,
+                                               workQueue,
+                                               new StatsNamedThreadFactory(name, true),
+                                               new AbortPolicyWithReport(name, url));
         return executor;
     }
 
     public ThreadStats getThreadStats() {
         int queues = 0, waits = 0, works = 0;
-        for (Map.Entry<String, Thread> entry : threadMap.entrySet()) {
-            Thread t = entry.getValue();
+        for (Thread t : threadSet) {
             if (!t.isAlive()) {
-                threadMap.remove(entry.getKey());
+                threadSet.remove(t);
                 continue;
             }
 
@@ -61,10 +65,8 @@ public class TestThreadPool implements ThreadPool {
                 works++;
                 continue;
             }
-            
-            Class<?> bClass = blocker.getClass();
-            Class<?> declaringClass = bClass.getDeclaringClass();
-            if (declaringClass == SynchronousQueue.class) {
+
+            if (blocker == maybeBlocker) {
                 queues++;
             } else {
                 waits++;
@@ -92,6 +94,31 @@ public class TestThreadPool implements ThreadPool {
         };
     }
 
+    private static Object getMaybeBlocker(BlockingQueue<?> queue) {
+        Class<? extends BlockingQueue> queueClass = queue.getClass();
+
+        if (queueClass == LinkedTransferQueue.class) {
+            return queue;
+        }
+
+        Object blocker;
+        try {
+            if (queueClass == SynchronousQueue.class) {
+                Field field = SynchronousQueue.class.getDeclaredField("transferer");
+                field.setAccessible(true);
+                blocker = field.get(queue);
+            } else {
+                Field field = queueClass.getDeclaredField("notEmpty");
+                field.setAccessible(true);
+                blocker = field.get(queue);
+            }
+        } catch (Exception e) {
+            blocker = null;
+        }
+
+        return blocker;
+    }
+
     class StatsNamedThreadFactory extends NamedInternalThreadFactory {
         StatsNamedThreadFactory(String prefix, boolean daemon) {
             super(prefix, daemon);
@@ -100,7 +127,7 @@ public class TestThreadPool implements ThreadPool {
         @Override
         public Thread newThread(Runnable runnable) {
             Thread thread = super.newThread(runnable);
-            threadMap.put(thread.getName(), thread);
+            threadSet.add(thread);
             return thread;
         }
     }
