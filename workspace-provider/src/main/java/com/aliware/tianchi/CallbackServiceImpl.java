@@ -100,6 +100,7 @@ public class CallbackServiceImpl implements CallbackService {
             }
 
             // notify 
+            if (weight != weightCache)
             for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                 try {
                     InstanceStats instanceStats = helper.getInstanceStats();
