@@ -3,6 +3,7 @@ package com.aliware.tianchi.common.conf;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.RingCounter;
 import com.aliware.tianchi.common.util.SegmentCounterFactory;
+import com.aliware.tianchi.common.util.SkipListCounter;
 
 import java.io.Serializable;
 import java.util.Comparator;
@@ -41,7 +42,7 @@ public class Configuration implements Serializable {
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
-    private SegmentCounterFactory counterFactory = () -> new RingCounter(1024);
+    private SegmentCounterFactory counterFactory = () -> new SkipListCounter();
 
     private boolean openAvgRT = true;
 

@@ -3,6 +3,8 @@ package com.aliware.tianchi.common.util;
 import sun.misc.Unsafe;
 
 /**
+ * todo: 目前这个类在并发量大的情况下不如跳表好使
+ *
  * @author yangxf
  */
 public class RingCounter implements SegmentCounter {
@@ -12,11 +14,13 @@ public class RingCounter implements SegmentCounter {
     private final Sequence[] data;
     private final int capacity;
     private final int indexMask;
+    private final int capacityShift;
 
     public RingCounter(int expectCapacity) {
         capacity = MathUtil.nextPowerOf2(expectCapacity);
-        data = new Sequence[capacity + 2 * BUFFER_PAD];
+        capacityShift = 31 - Integer.numberOfLeadingZeros(capacity);
         indexMask = capacity - 1;
+        data = new Sequence[capacity + 2 * BUFFER_PAD];
         for (int i = 0; i < capacity; i++) {
             data[BUFFER_PAD + i] = new Sequence(0);
         }
@@ -41,9 +45,9 @@ public class RingCounter implements SegmentCounter {
         while (epoch > seq.getKey()) {
             if (seq != SENTINEL &&
                 cas(index, seq, SENTINEL)) {
-                seq = new Sequence(epoch);
+                seq = new Sequence(epoch, n);
                 setValue(index, seq);
-                break;
+                return;
             }
             seq = elementAt(index);
         }
@@ -60,9 +64,9 @@ public class RingCounter implements SegmentCounter {
         while (epoch > seq.getKey()) {
             if (seq != SENTINEL &&
                 cas(index, seq, SENTINEL)) {
-                seq = new Sequence(epoch);
+                seq = new Sequence(epoch, n);
                 setValue(index, seq);
-                break;
+                return;
             }
             seq = elementAt(index);
         }
@@ -130,11 +134,11 @@ public class RingCounter implements SegmentCounter {
                 }
             }
         }
-        
+
         if (toInclusive && fromIndex != toIndex) {
             sum += elementAt(toIndex).getValue();
         }
-        
+
         return sum;
     }
 
@@ -144,7 +148,7 @@ public class RingCounter implements SegmentCounter {
     }
 
     private long epoch(long offset) {
-        return offset / capacity;
+        return offset >>> capacityShift;
     }
 
     private int indexOf(long offset) {
