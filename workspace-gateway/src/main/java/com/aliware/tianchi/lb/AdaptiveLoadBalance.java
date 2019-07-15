@@ -144,7 +144,7 @@ public class AdaptiveLoadBalance implements LoadBalance {
         double[] weights = new double[size];
         for (int i = 0; i < size; i++) {
             SnapshotStats stats = statsList.get(i);
-            double weight = stats.getDomainThreads();
+            double weight = stats.getDomainThreads() - stats.getWeight();
             total += weight;
             weights[i] = total;
         }

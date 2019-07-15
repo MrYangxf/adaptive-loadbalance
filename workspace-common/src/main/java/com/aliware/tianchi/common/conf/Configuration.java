@@ -65,8 +65,8 @@ public class Configuration implements Serializable {
     private long statsPushDelayMs = 100;
 
     public boolean isLogger() {
-        // return  (ThreadLocalRandom.current().nextInt() & 511) == 0;
-        return false;
+        return  (ThreadLocalRandom.current().nextInt() & 511) == 0;
+        // return false;
     }
     
     public double getMaxRateOfWaitingRequests() {
