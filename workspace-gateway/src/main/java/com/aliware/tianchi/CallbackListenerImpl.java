@@ -1,7 +1,7 @@
 package com.aliware.tianchi;
 
 import com.aliware.tianchi.common.metric.SnapshotStats;
-import com.aliware.tianchi.lb.metric.LBStatistics;
+import com.aliware.tianchi.util.LBHelper;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.rpc.listener.CallbackListener;
@@ -20,26 +20,22 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonEmpty;
 public class CallbackListenerImpl implements CallbackListener {
 
     private static final Logger logger = LoggerFactory.getLogger(CallbackListenerImpl.class);
-    static final long START = System.nanoTime();
+    private static final long START = System.nanoTime();
 
     @Override
     public void receiveServerMsg(String msg) {
         if (nonEmpty(msg)) {
             try {
                 SnapshotStats stats = SnapshotStats.fromString(msg);
-                String serviceId = stats.getServiceId();
-                String address = stats.getAddress();
 
-                LBStatistics lbStatistics = LBStatistics.INSTANCE;
-                lbStatistics.updateInstanceStats(serviceId, address, stats);
+                LBHelper.CUSTOM.updateInstanceStats(stats);
 
-
-                if (serviceId.contains("hash")) {
+                if (stats.getServiceId().contains("hash")) {
                     logger.info("sec=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START) +
-                                " UPDATE " + address +
+                                " UPDATE " + stats.getAddress() +
                                 ", epoch=" + stats.getEpoch() +
+                                ", tokens=" + LBHelper.CUSTOM.getStatsBucket(stats.getServiceId(), stats.getAddress()).remainTokens() +
                                 ", weight=" + stats.getWeight() +
-                                ", token=" + stats.tokens() +
                                 ", active=" + stats.getActiveCount() +
                                 ", ms=" + stats.intervalTimeMs() +
                                 ", threads=" + stats.getDomainThreads() +

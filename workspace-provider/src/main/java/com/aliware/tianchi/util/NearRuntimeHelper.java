@@ -30,17 +30,19 @@ public class NearRuntimeHelper {
 
     private Configuration conf;
 
+    private final ScheduledExecutorService scheduledExecutor;
+
     private final LinkedList<RuntimeInfo> buf = new LinkedList<>();
 
     private volatile InstanceStats stats;
 
     private volatile RuntimeInfo current;
 
-    private final ScheduledExecutorService scheduledExecutor;
-
     private AtomicLong epoch;
 
     private int threads = 200;
+
+    private long startNanos;
 
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
@@ -80,6 +82,10 @@ public class NearRuntimeHelper {
         return threads;
     }
 
+    public long getStartNanos() {
+        return startNanos;
+    }
+
     public RuntimeInfo getRuntimeInfo() {
         return current;
     }
@@ -96,6 +102,7 @@ public class NearRuntimeHelper {
                     int nThreads = Integer.parseInt(nThreadsString);
                     stats = newStats(DubboUtil.getIpAddress(invoker), threads = nThreads);
                     epoch = new AtomicLong(1);
+                    startNanos = System.nanoTime();
                 }
             }
         }

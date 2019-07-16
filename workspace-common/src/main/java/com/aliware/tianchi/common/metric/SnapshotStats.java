@@ -1,14 +1,14 @@
 package com.aliware.tianchi.common.metric;
 
 import com.aliware.tianchi.common.util.RuntimeInfo;
-import com.aliware.tianchi.common.util.Sequence;
 
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicLong;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.*;
 
 /**
+ * todo
+ *
  * @author yangxf
  */
 public abstract class SnapshotStats implements Serializable {
@@ -17,24 +17,17 @@ public abstract class SnapshotStats implements Serializable {
     private static final String SEPARATOR = "_";
     private static final String GROUP_SEPARATOR = "@";
 
-    private volatile double weight;
+    private volatile int weight;
 
     private volatile long epoch;
 
-    private volatile double avgRTMs;
-
-    private Sequence token;
-
     public SnapshotStats() {
-        this(0, 0, 0);
+        this(0, 0);
     }
 
-    public SnapshotStats(double weight, long epoch, double avgRTMs) {
+    public SnapshotStats(int weight, long epoch) {
         this.weight = weight;
         this.epoch = epoch;
-        this.avgRTMs = avgRTMs;
-        token = new Sequence(epoch);
-        token.setValue((long) weight);
     }
 
     public static SnapshotStats fromString(String text) {
@@ -64,14 +57,14 @@ public abstract class SnapshotStats implements Serializable {
         long rejections = Long.parseLong(insts[7]);
         double avgResponseMs = Double.parseDouble(insts[8]);
         long throughput = Long.parseLong(insts[9]);
-        double weight = Double.parseDouble(insts[10]);
+        int weight = Integer.parseInt(insts[10]);
         long epoch = Long.parseLong(insts[11]);
         ServerStats serverStats = new ServerStats(finalAddress);
         RuntimeInfo runInfo = isEmpty(groups[2]) || groups[2].equals("null") ?
                 null : RuntimeInfo.fromString(groups[2]);
         serverStats.setRuntimeInfo(runInfo);
 
-        return new SnapshotStats(weight, epoch, avgResponseMs) {
+        return new SnapshotStats(weight, epoch) {
             private static final long serialVersionUID = 6197862269143364929L;
 
             @Override
@@ -102,6 +95,11 @@ public abstract class SnapshotStats implements Serializable {
             @Override
             public String getAddress() {
                 return finalAddress;
+            }
+
+            @Override
+            public double getAvgRTMs() {
+                return avgResponseMs;
             }
 
             @Override
@@ -149,29 +147,6 @@ public abstract class SnapshotStats implements Serializable {
                + GROUP_SEPARATOR + getServerStats().getRuntimeInfo();
     }
 
-    public boolean acquireToken() {
-        long n = token.getValue();
-        while (n > 0) {
-            if (token.compareAndSetValue(n, n - 1)) {
-                return true;
-            }
-            n = token.getValue();
-        }
-        return false;
-    }
-
-    public long releaseToken() {
-        return token.incrementAndGet();
-    }
-
-    public long tokens() {
-        return token.getValue();
-    }
-
-    public void addTokens(long tokens) {
-        token.getAndAdd(tokens);
-    }
-
     public long getEpoch() {
         return epoch;
     }
@@ -180,11 +155,11 @@ public abstract class SnapshotStats implements Serializable {
         this.epoch = epoch;
     }
 
-    public void setWeight(double weight) {
+    public void setWeight(int weight) {
         this.weight = weight;
     }
 
-    public double getWeight() {
+    public int getWeight() {
         return weight;
     }
 
@@ -217,12 +192,7 @@ public abstract class SnapshotStats implements Serializable {
     }
 
     public double getAvgRTMs() {
-        return avgRTMs;
-    }
-
-    public SnapshotStats setAvgRTMs(double avgRTMs) {
-        this.avgRTMs = avgRTMs;
-        return this;
+        throw new UnsupportedOperationException();
     }
 
     public long getThroughput() {

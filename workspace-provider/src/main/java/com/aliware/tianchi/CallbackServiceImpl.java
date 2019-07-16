@@ -3,7 +3,6 @@ package com.aliware.tianchi;
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
-import com.aliware.tianchi.common.util.MathUtil;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
@@ -29,15 +28,13 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class CallbackServiceImpl implements CallbackService {
 
-    private static long START = 0;
-
     private static final Logger logger = LoggerFactory.getLogger(CallbackServiceImpl.class);
 
     public CallbackServiceImpl() {
         NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
         Configuration conf = helper.getConfiguration();
         helper.getScheduledExecutor()
-              .scheduleWithFixedDelay(() -> _updateAndNotify(true),
+              .scheduleWithFixedDelay(new PushTask(),
                                       conf.getStatsPushInitDelayMs(),
                                       conf.getStatsPushDelayMs(),
                                       TimeUnit.MILLISECONDS);
@@ -54,49 +51,48 @@ public class CallbackServiceImpl implements CallbackService {
         listeners.put(key, listener);
     }
 
-    private volatile double weightCache;
+    class PushTask implements Runnable {
 
-    private volatile long previousMillis = System.currentTimeMillis();
+        private int weightCache;
 
-    private void _updateAndNotify(boolean clean) {
-        if (START == 0) {
-            START = System.nanoTime();
-        }
-        try {
+        private long previousMillis = System.currentTimeMillis();
+
+        @Override
+        public void run() {
+
+            NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
 
             // update runtime info
-            NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
             helper.updateRuntimeInfo();
-
-            long epoch = helper.getAndIncrementEpoch();
 
             TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
                                                                         .getAdaptiveExtension();
-
             TestThreadPool.ThreadStats threadStats = threadPool.getThreadStats();
             int queues = threadStats.queues(), waits = threadStats.waits(), works = threadStats.works();
 
-            double weight = 0;
-
+            int weight;
             if (waits > 0) {
                 weight = works;
                 weightCache = weight;
-                previousMillis = System.currentTimeMillis();
+                // previousMillis = System.currentTimeMillis();
             } else if (works > weightCache) {
                 weight = works;
                 weightCache = weight;
-            } else if (MathUtil.isApproximate(works, weightCache, 10) ||
-                       System.currentTimeMillis() < previousMillis + 2500) {
-                weight = weightCache;
+                // } else if (MathUtil.isApproximate(works, weightCache, 10) ||
+                //            System.currentTimeMillis() < previousMillis + 2500) {
+                //     weight = weightCache;
             } else {
                 // weight = 1.4 * weightCache;
-                weightCache = works;
+                // weightCache = works;
+                weight = weightCache;
             }
 
             if (weight < helper.getThreads() / 2) {
                 weight = helper.getThreads();
                 weightCache = works;
             }
+
+            long epoch = helper.getAndIncrementEpoch();
 
             // notify 
             for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
@@ -113,8 +109,9 @@ public class CallbackServiceImpl implements CallbackService {
                             snapshot.setEpoch(epoch);
                             snapshot.setWeight(weight);
                             listener.receiveServerMsg(snapshot.toString());
+                            long time = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - helper.getStartNanos());
                             logger.info(new StringJoiner(", ")
-                                                .add("time=" + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - START))
+                                                .add("time=" + time)
                                                 .add("epoch=" + epoch)
                                                 .add("act=" + snapshot.getActiveCount())
                                                 .add("queues=" + queues)
@@ -134,13 +131,10 @@ public class CallbackServiceImpl implements CallbackService {
                 }
             }
 
-            if (clean) {
-                helper.cleanStats();
-            }
-        } catch (Throwable throwable) {
-            logger.error("schedule error", throwable);
+            helper.cleanStats();
+            
         }
-    }
 
+    }
 
 }

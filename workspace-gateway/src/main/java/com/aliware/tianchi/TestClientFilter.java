@@ -1,8 +1,7 @@
 package com.aliware.tianchi;
 
-import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.common.util.DubboUtil;
-import com.aliware.tianchi.lb.metric.LBStatistics;
+import com.aliware.tianchi.util.LBHelper;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
@@ -25,13 +24,7 @@ public class TestClientFilter implements Filter {
     public Result onResponse(Result result, Invoker<?> invoker, Invocation invocation) {
         String address = DubboUtil.getIpAddress(invoker);
         String serviceId = DubboUtil.getServiceId(invoker, invocation);
-        SnapshotStats stats = LBStatistics.INSTANCE.getInstanceStats(serviceId, address);
-        if (stats != null) {
-            String epoch = invocation.getAttachment("CURRENT_STATS_EPOCH", "0");
-            if (epoch.equals(String.valueOf(stats.getEpoch()))) {
-                stats.releaseToken();
-            }
-        }
+        LBHelper.CUSTOM.releaseTokenIfRequire(serviceId, address, invocation);
         return result;
     }
 }
