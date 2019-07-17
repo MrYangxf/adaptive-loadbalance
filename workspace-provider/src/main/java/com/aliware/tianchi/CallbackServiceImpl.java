@@ -74,7 +74,7 @@ public class CallbackServiceImpl implements CallbackService {
             if (waits > 0) {
                 weight = works;
                 weightCache = weight;
-                // previousMillis = System.currentTimeMillis();
+                previousMillis = System.currentTimeMillis();
             } else if (works > weightCache) {
                 weight = works;
                 weightCache = weight;
@@ -132,7 +132,7 @@ public class CallbackServiceImpl implements CallbackService {
             }
 
             helper.cleanStats();
-            
+
         }
 
     }
