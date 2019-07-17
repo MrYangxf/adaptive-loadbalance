@@ -70,10 +70,12 @@ public class CallbackServiceImpl implements CallbackService {
             TestThreadPool.ThreadStats threadStats = threadPool.getThreadStats();
             int queues = threadStats.queues(), waits = threadStats.waits(), works = threadStats.works();
 
-            int weight = 0;
+            int weight;
             if (waits > 0 || works > weightCache) {
                 weight = works;
                 weightCache = weight;
+            } else {
+                weight = weightCache;
             }
 
             if (weight < helper.getThreads() / 2) {
