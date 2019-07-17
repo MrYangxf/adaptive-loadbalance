@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
@@ -33,11 +34,10 @@ public class CallbackServiceImpl implements CallbackService {
     public CallbackServiceImpl() {
         NearRuntimeHelper helper = NearRuntimeHelper.INSTANCE;
         Configuration conf = helper.getConfiguration();
-        helper.getScheduledExecutor()
-              .scheduleWithFixedDelay(new PushTask(),
-                                      conf.getStatsPushInitDelayMs(),
-                                      conf.getStatsPushDelayMs(),
-                                      TimeUnit.MILLISECONDS);
+        long initDelayMs = conf.getStatsPushInitDelayMs();
+        long delayMs = conf.getStatsPushDelayMs();
+        ScheduledExecutorService executor = helper.getScheduledExecutor();
+        executor.scheduleWithFixedDelay(new PushTask(), initDelayMs, delayMs, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -65,8 +65,8 @@ public class CallbackServiceImpl implements CallbackService {
             // update runtime info
             helper.updateRuntimeInfo();
 
-            TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
-                                                                        .getAdaptiveExtension();
+            TestThreadPool threadPool = (TestThreadPool)
+                    ExtensionLoader.getExtensionLoader(ThreadPool.class).getAdaptiveExtension();
             TestThreadPool.ThreadStats threadStats = threadPool.getThreadStats();
             int queues = threadStats.queues(), waits = threadStats.waits(), works = threadStats.works();
 
@@ -86,10 +86,11 @@ public class CallbackServiceImpl implements CallbackService {
             long epoch = helper.getAndIncrementEpoch();
 
             // notify 
-            for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
-                try {
-                    InstanceStats instanceStats = helper.getInstanceStats();
-                    if (nonNull(instanceStats)) {
+            InstanceStats instanceStats = helper.getInstanceStats();
+            if (nonNull(instanceStats)) {
+                for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
+                    try {
+
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
                         for (String serviceId : serviceIds) {
@@ -116,13 +117,14 @@ public class CallbackServiceImpl implements CallbackService {
                                                 .add("run=" + snapshot.getServerStats().getRuntimeInfo())
                                                 .toString());
                         }
-                    }
-                } catch (Throwable t) {
-                    logger.error("send error", t);
-                }
-            }
 
-            helper.cleanStats();
+                    } catch (Throwable t) {
+                        logger.error("send error", t);
+                    }
+                }
+
+                helper.cleanStats();
+            }
 
         }
 

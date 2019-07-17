@@ -28,24 +28,20 @@ import static com.aliware.tianchi.common.util.ObjectUtil.nonNull;
  */
 public class UserLoadBalance implements LoadBalance {
 
-    private static final int HEAP_THRESHOLD = 8;
+    private static final int HEAP_THRESHOLD = 4;
 
     private final long start = System.nanoTime();
 
     private final Configuration conf;
 
     private final Comparator<StatsTokenBucket> comparator;
-    private final Comparator<StatsTokenBucket> idleComparator;
 
-    private final ThreadLocal<Queue<StatsTokenBucket>> localQueue;
-    private final ThreadLocal<Queue<StatsTokenBucket>> localIdleQueue;
+    private final Comparator<StatsTokenBucket> idleComparator;
 
     public UserLoadBalance() {
         conf = LBHelper.CUSTOM.getConfiguration();
         comparator = Comparator.comparingDouble(b -> b.getStats().getAvgRTMs());
         idleComparator = Comparator.comparingLong(StatsTokenBucket::remainTokens);
-        localQueue = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, comparator));
-        localIdleQueue = ThreadLocal.withInitial(() -> new SmallPriorityQueue<>(8, idleComparator));
     }
 
     @Override
@@ -62,23 +58,19 @@ public class UserLoadBalance implements LoadBalance {
 
         LBHelper helper = LBHelper.CUSTOM;
         Map<String, Invoker<T>> mapping = new HashMap<>();
-
-        // Queue<SnapshotStats> queue = size > HEAP_THRESHOLD ?
-        //         new PriorityQueue<>(comparator) :
-        //         new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator);
-
-        Queue<StatsTokenBucket> queue = localQueue.get();
+        List<StatsTokenBucket> statsList = new ArrayList<>(size);
+        Queue<StatsTokenBucket> queue = size > HEAP_THRESHOLD ?
+                new PriorityQueue<>(comparator) :
+                new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator);
 
         String serviceId = DubboUtil.getServiceId(invokers.get(0), invocation);
 
         Map<String, StatsTokenBucket> statsBucketGroup = helper.getStatsBucketGroup(serviceId);
 
-        List<StatsTokenBucket> statsList = new ArrayList<>(size);
         for (Invoker<T> invoker : invokers) {
             String address = DubboUtil.getIpAddress(invoker);
             StatsTokenBucket bucket = statsBucketGroup.get(address);
             if (isNull(bucket.getStats())) {
-                queue.clear();
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
             mapping.put(address, invoker);
@@ -88,7 +80,7 @@ public class UserLoadBalance implements LoadBalance {
         }
 
         Queue<StatsTokenBucket> idleQueue = null;
-        for (int mask = 0x00000001; ; ) {
+        for (int mask = 0x80000001; ; ) {
             StatsTokenBucket bucket = queue.poll();
             if (isNull(bucket)) {
                 break;
@@ -100,10 +92,9 @@ public class UserLoadBalance implements LoadBalance {
                     bucket.releaseToken();
 
                     if (isNull(idleQueue)) {
-                        // idleQueue = size > HEAP_THRESHOLD ?
-                        //         new PriorityQueue<>(idleComparator) :
-                        //         new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
-                        idleQueue = localIdleQueue.get();
+                        idleQueue = size > HEAP_THRESHOLD ?
+                                new PriorityQueue<>(idleComparator) :
+                                new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
                     }
 
                     idleQueue.offer(bucket);
@@ -111,10 +102,8 @@ public class UserLoadBalance implements LoadBalance {
                     continue;
                 }
 
-                String address = bucket.getStats().getAddress();
                 helper.ensureTokenReleased(bucket, invocation);
-                queue.clear();
-                return mapping.get(address);
+                return mapping.get(bucket.getStats().getAddress());
             }
         }
 
@@ -125,27 +114,26 @@ public class UserLoadBalance implements LoadBalance {
             }
             if (bucket.acquireToken()) {
                 helper.ensureTokenReleased(bucket, invocation);
-                idleQueue.clear();
                 return mapping.get(bucket.getStats().getAddress());
             }
         }
 
-        // weighted random ?
+        // weighted random ? or rejection ?
 
-        double total = 0d;
-        double[] weights = new double[size];
+        int total = 0;
+        int[] weights = new int[size];
         for (int i = 0; i < size; i++) {
             SnapshotStats stats = statsList.get(i).getStats();
-            double weight = stats.getDomainThreads() - stats.getWeight();
+            int weight = stats.getDomainThreads() - stats.getWeight();
             total += weight;
             weights[i] = total;
         }
 
-        if (total == 0) {
+        if (total <= 0) {
             return invokers.get(ThreadLocalRandom.current().nextInt(size));
         }
 
-        double r = ThreadLocalRandom.current().nextDouble(total);
+        int r = ThreadLocalRandom.current().nextInt(total);
         for (int i = 0; i < size; i++) {
             if (r < weights[i]) {
                 return invokers.get(i);

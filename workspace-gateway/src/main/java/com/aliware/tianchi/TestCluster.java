@@ -9,7 +9,7 @@ import org.apache.dubbo.rpc.cluster.Directory;
 /**
  * @author yangxf
  */
-@Adaptive
+// @Adaptive
 public class TestCluster implements Cluster {
     @Override
     public <T> Invoker<T> join(Directory<T> directory) throws RpcException {
