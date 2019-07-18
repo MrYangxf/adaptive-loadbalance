@@ -11,7 +11,6 @@ public class SmallPriorityQueue<E> extends AbstractQueue<E> {
 
     private final Comparator<E> comparator;
     private final Object[] data;
-    private final boolean[] marks;
     private int size;
 
     public SmallPriorityQueue(int capacity) {
@@ -20,7 +19,6 @@ public class SmallPriorityQueue<E> extends AbstractQueue<E> {
 
     public SmallPriorityQueue(int capacity, Comparator<E> comparator) {
         data = new Object[capacity];
-        marks = new boolean[capacity];
         this.comparator = comparator;
     }
 
@@ -37,9 +35,8 @@ public class SmallPriorityQueue<E> extends AbstractQueue<E> {
     @Override
     public boolean offer(E e) {
         if (size < data.length) {
-            for (int i = 0; i < marks.length; i++) {
-                if (!marks[i]) {
-                    marks[i] = true;
+            for (int i = 0; i < data.length; i++) {
+                if (data[i] == null) {
                     data[i] = e;
                     size++;
                     return true;
@@ -56,9 +53,10 @@ public class SmallPriorityQueue<E> extends AbstractQueue<E> {
         }
 
         int i = peekIndex();
+        E e = elementAt(i);
+        data[i] = null;
         size--;
-        marks[i] = false;
-        return elementAt(i);
+        return e;
     }
 
     @Override
@@ -71,8 +69,8 @@ public class SmallPriorityQueue<E> extends AbstractQueue<E> {
 
     @Override
     public void clear() {
-        for (int i = 0; i < marks.length; i++) {
-            marks[i] = false;
+        for (int i = 0; i < data.length; i++) {
+            data[i] = null;
         }
         size = 0;
     }
@@ -80,14 +78,12 @@ public class SmallPriorityQueue<E> extends AbstractQueue<E> {
     private int peekIndex() {
         int m = -1;
         E em = null;
-        for (int i = 0; i < marks.length; i++) {
-            if (marks[i]) {
-                E ei = elementAt(i);
-                if (em == null ||
-                    cpr(ei, em) < 0) {
-                    em = ei;
-                    m = i;
-                }
+        for (int i = 0; i < data.length; i++) {
+            E ei = elementAt(i);
+            if (ei != null &&
+                (em == null || cpr(ei, em) < 0)) {
+                em = ei;
+                m = i;
             }
         }
         return m;

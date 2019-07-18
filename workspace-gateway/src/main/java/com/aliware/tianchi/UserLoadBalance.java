@@ -58,25 +58,25 @@ public class UserLoadBalance implements LoadBalance {
 
         LBHelper helper = LBHelper.CUSTOM;
         Map<String, Invoker<T>> mapping = new HashMap<>();
-        List<StatsTokenBucket> statsList = new ArrayList<>(size);
+        StatsTokenBucket[] statsArray = new StatsTokenBucket[size];
         Queue<StatsTokenBucket> queue = size > HEAP_THRESHOLD ?
                 new PriorityQueue<>(comparator) :
-                new SmallPriorityQueue<>(HEAP_THRESHOLD, comparator);
+                new SmallPriorityQueue<>(size, comparator);
 
         String serviceId = DubboUtil.getServiceId(invokers.get(0), invocation);
 
         Map<String, StatsTokenBucket> statsBucketGroup = helper.getStatsBucketGroup(serviceId);
 
-        for (Invoker<T> invoker : invokers) {
+        for (int i = 0; i < size; i++) {
+            Invoker<T> invoker = invokers.get(i);
             String address = DubboUtil.getIpAddress(invoker);
             StatsTokenBucket bucket = statsBucketGroup.get(address);
             if (isNull(bucket.getStats())) {
                 return invokers.get(ThreadLocalRandom.current().nextInt(size));
             }
             mapping.put(address, invoker);
-            // todo:
             queue.offer(bucket);
-            statsList.add(bucket);
+            statsArray[i] = bucket;
         }
 
         Queue<StatsTokenBucket> idleQueue = null;
@@ -94,7 +94,7 @@ public class UserLoadBalance implements LoadBalance {
                     if (isNull(idleQueue)) {
                         idleQueue = size > HEAP_THRESHOLD ?
                                 new PriorityQueue<>(idleComparator) :
-                                new SmallPriorityQueue<>(HEAP_THRESHOLD, idleComparator);
+                                new SmallPriorityQueue<>(size, idleComparator);
                     }
 
                     idleQueue.offer(bucket);
@@ -123,7 +123,7 @@ public class UserLoadBalance implements LoadBalance {
         int total = 0;
         int[] weights = new int[size];
         for (int i = 0; i < size; i++) {
-            SnapshotStats stats = statsList.get(i).getStats();
+            SnapshotStats stats = statsArray[i].getStats();
             int weight = stats.getDomainThreads() - stats.getWeight();
             total += weight;
             weights[i] = total;
