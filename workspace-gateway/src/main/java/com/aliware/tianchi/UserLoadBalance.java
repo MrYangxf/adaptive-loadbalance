@@ -120,11 +120,11 @@ public class UserLoadBalance implements LoadBalance {
 
         // weighted random ? or rejection ?
 
-        double total = 0;
-        double[] weights = new double[size];
+        int total = 0;
+        int[] weights = new int[size];
         for (int i = 0; i < size; i++) {
             SnapshotStats stats = statsArray[i].getStats();
-            double weight = stats.getWeight() / (stats.getAvgRTMs() + .0001d);
+            int weight = stats.getDomainThreads() - stats.getWeight();
             total += weight;
             weights[i] = total;
         }
@@ -133,7 +133,7 @@ public class UserLoadBalance implements LoadBalance {
             return invokers.get(ThreadLocalRandom.current().nextInt(size));
         }
 
-        double r = ThreadLocalRandom.current().nextDouble(total);
+        int r = ThreadLocalRandom.current().nextInt(total);
         for (int i = 0; i < size; i++) {
             if (r < weights[i]) {
                 return invokers.get(i);

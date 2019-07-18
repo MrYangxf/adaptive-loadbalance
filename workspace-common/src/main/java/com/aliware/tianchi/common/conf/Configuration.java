@@ -36,7 +36,7 @@ public class Configuration implements Serializable {
     /**
      * 指标统计时间窗口配置
      */
-    private long windowSizeOfStats = 8;
+    private long windowSizeOfStats = 5;
 
     private long timeIntervalOfStats = 100;
 
