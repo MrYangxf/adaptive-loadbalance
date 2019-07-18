@@ -98,7 +98,7 @@ public class UserLoadBalance implements LoadBalance {
                     }
 
                     idleQueue.offer(bucket);
-                    mask = (mask << 1) | mask;
+                    // mask = (mask << 1) | mask;
                     continue;
                 }
 
