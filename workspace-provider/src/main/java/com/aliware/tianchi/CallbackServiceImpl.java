@@ -70,10 +70,11 @@ public class CallbackServiceImpl implements CallbackService {
 
             int weight;
 
-            TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
-                                                                        .getAdaptiveExtension();
+            // TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
+            //                                                             .getAdaptiveExtension();
 
-            ThreadPoolStats threadPoolStats = threadPool.getThreadPoolStats();
+            // ThreadPoolStats threadPoolStats = threadPool.getThreadPoolStats();
+            ThreadPoolStats threadPoolStats = helper.getThreadPoolStats();
             int frees = threadPoolStats.freeCount(),
                     waits = threadPoolStats.waitCount(),
                     works = threadPoolStats.workCount();
