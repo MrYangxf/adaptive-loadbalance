@@ -4,10 +4,9 @@ import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.util.NearRuntimeHelper;
-import org.apache.dubbo.common.extension.ExtensionLoader;
+import com.aliware.tianchi.util.ThreadPoolStats;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
@@ -57,6 +56,8 @@ public class CallbackServiceImpl implements CallbackService {
 
         private long previousMillis = System.currentTimeMillis();
 
+        private Map<String, SnapshotStats> prevStatsMap = new ConcurrentHashMap<>();
+
         @Override
         public void run() {
 
@@ -65,12 +66,13 @@ public class CallbackServiceImpl implements CallbackService {
             // update runtime info
             helper.updateRuntimeInfo();
 
-            TestThreadPool threadPool = (TestThreadPool)
-                    ExtensionLoader.getExtensionLoader(ThreadPool.class).getAdaptiveExtension();
-            TestThreadPool.ThreadStats threadStats = threadPool.getThreadStats();
-            int queues = threadStats.queues(), waits = threadStats.waits(), works = threadStats.works();
-
             int weight;
+
+            ThreadPoolStats threadPoolStats = helper.getThreadPoolStats();
+            int frees = threadPoolStats.freeCount(),
+                    waits = threadPoolStats.waitCount(),
+                    works = threadPoolStats.workCount();
+
             if (waits > 0 || works > weightCache) {
                 weight = works;
                 weightCache = weight;
@@ -90,23 +92,26 @@ public class CallbackServiceImpl implements CallbackService {
             if (nonNull(instanceStats)) {
                 for (Map.Entry<String, CallbackListener> entry : listeners.entrySet()) {
                     try {
-
                         CallbackListener listener = entry.getValue();
                         Set<String> serviceIds = instanceStats.getServiceIds();
                         for (String serviceId : serviceIds) {
                             if (!serviceId.contains("hash")) {
                                 continue;
                             }
+
                             SnapshotStats snapshot = instanceStats.snapshot(serviceId);
                             snapshot.setEpoch(epoch);
                             snapshot.setWeight(weight);
                             listener.receiveServerMsg(snapshot.toString());
+
+                            prevStatsMap.put(serviceId, snapshot);
+
                             long time = TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - helper.getStartNanos());
                             logger.info(new StringJoiner(", ")
                                                 .add("time=" + time)
                                                 .add("epoch=" + epoch)
                                                 .add("act=" + snapshot.getActiveCount())
-                                                .add("queues=" + queues)
+                                                .add("frees=" + frees)
                                                 .add("waits=" + waits)
                                                 .add("works=" + works)
                                                 .add("weight=" + weight)

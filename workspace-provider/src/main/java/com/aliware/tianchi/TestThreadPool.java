@@ -20,7 +20,7 @@ import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
  *
  * @author yangxf
  */
-@Adaptive
+// @Adaptive
 public class TestThreadPool implements ThreadPool {
 
     private final Set<Thread> threadSet = new ConcurrentHashSet<>();

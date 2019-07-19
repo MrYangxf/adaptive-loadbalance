@@ -7,11 +7,15 @@ import com.aliware.tianchi.common.metric.TimeWindowInstanceStats;
 import com.aliware.tianchi.common.util.DubboUtil;
 import com.aliware.tianchi.common.util.RuntimeInfo;
 import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.store.DataStore;
 import org.apache.dubbo.rpc.Invoker;
 
 import java.util.LinkedList;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
@@ -43,6 +47,8 @@ public class NearRuntimeHelper {
     private int threads = 200;
 
     private long startNanos;
+
+    private Executor executor;
 
     public NearRuntimeHelper(Configuration conf) {
         checkNotNull(conf);
@@ -82,6 +88,14 @@ public class NearRuntimeHelper {
         return threads;
     }
 
+    public Executor getExecutor() {
+        return executor;
+    }
+
+    public ThreadPoolStats getThreadPoolStats() {
+        return ThreadPoolUtil.getThreadPoolStats(executor);
+    }
+
     public long getStartNanos() {
         return startNanos;
     }
@@ -98,11 +112,19 @@ public class NearRuntimeHelper {
         if (stats == null) {
             synchronized (this) {
                 if (stats == null) {
-                    String nThreadsString = invoker.getUrl().getParameter(Constants.THREADS_KEY);
-                    int nThreads = Integer.parseInt(nThreadsString);
+                    URL url = invoker.getUrl();
+                    int nThreads = url.getParameter(Constants.THREADS_KEY, Constants.DEFAULT_THREADS);
+
                     stats = newStats(DubboUtil.getIpAddress(invoker), threads = nThreads);
+
+                    DataStore dataStore = ExtensionLoader.getExtensionLoader(DataStore.class).getDefaultExtension();
+
+                    executor = (Executor) dataStore.get(Constants.EXECUTOR_SERVICE_COMPONENT_KEY, Integer.toString(url.getPort()));
+
                     epoch = new AtomicLong(1);
+
                     startNanos = System.nanoTime();
+
                 }
             }
         }
