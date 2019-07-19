@@ -63,7 +63,7 @@ public class Configuration implements Serializable {
      */
     private long statsPushInitDelayMs = 500;
 
-    private long statsPushDelayMs = 100;
+    private long statsPushDelayMs = 150;
 
     public boolean isLogger() {
         return  (ThreadLocalRandom.current().nextInt() & 511) == 0;

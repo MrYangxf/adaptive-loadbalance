@@ -100,7 +100,7 @@ public class ThreadPoolUtil {
         return queue;
     }
 
-    private static Object getMaybeBlocker(BlockingQueue<?> queue) {
+    public static Object getMaybeBlocker(BlockingQueue<?> queue) {
         if (isNull(queue)) {
             return null;
         }

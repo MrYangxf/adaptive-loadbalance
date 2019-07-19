@@ -1,5 +1,6 @@
 package com.aliware.tianchi;
 
+import com.aliware.tianchi.util.ThreadPoolStats;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.Adaptive;
@@ -8,19 +9,19 @@ import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.common.threadpool.support.AbortPolicyWithReport;
 import org.apache.dubbo.common.utils.ConcurrentHashSet;
 
-import java.lang.reflect.Field;
 import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.LockSupport;
 
 import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
+import static com.aliware.tianchi.util.ThreadPoolUtil.getMaybeBlocker;
 
 /**
  * todo:
  *
  * @author yangxf
  */
-// @Adaptive
+@Adaptive
 public class TestThreadPool implements ThreadPool {
 
     private final Set<Thread> threadSet = new ConcurrentHashSet<>();
@@ -49,8 +50,8 @@ public class TestThreadPool implements ThreadPool {
         return executor;
     }
 
-    public ThreadStats getThreadStats() {
-        int queues = 0, waits = 0, works = 0;
+    public ThreadPoolStats getThreadPoolStats() {
+        int frees = 0, waits = 0, works = 0;
         for (Thread t : threadSet) {
             if (!t.isAlive()) {
                 threadSet.remove(t);
@@ -67,56 +68,31 @@ public class TestThreadPool implements ThreadPool {
             }
 
             if (blocker == maybeBlocker) {
-                queues++;
+                frees++;
             } else {
                 waits++;
             }
         }
 
-        int finalQueues = queues;
+        int finalFrees = frees;
         int finalWaits = waits;
         int finalWorks = works;
-        return new ThreadStats() {
+        return new ThreadPoolStats() {
             @Override
-            public int queues() {
-                return finalQueues;
+            public int freeCount() {
+                return finalFrees;
             }
 
             @Override
-            public int waits() {
+            public int waitCount() {
                 return finalWaits;
             }
 
             @Override
-            public int works() {
+            public int workCount() {
                 return finalWorks;
             }
         };
-    }
-
-    private static Object getMaybeBlocker(BlockingQueue<?> queue) {
-        Class<? extends BlockingQueue> queueClass = queue.getClass();
-
-        if (queueClass == LinkedTransferQueue.class) {
-            return queue;
-        }
-
-        Object blocker;
-        try {
-            if (queueClass == SynchronousQueue.class) {
-                Field field = SynchronousQueue.class.getDeclaredField("transferer");
-                field.setAccessible(true);
-                blocker = field.get(queue);
-            } else {
-                Field field = queueClass.getDeclaredField("notEmpty");
-                field.setAccessible(true);
-                blocker = field.get(queue);
-            }
-        } catch (Exception e) {
-            blocker = null;
-        }
-
-        return blocker;
     }
 
     class StatsNamedThreadFactory extends NamedInternalThreadFactory {
@@ -130,15 +106,6 @@ public class TestThreadPool implements ThreadPool {
             threadSet.add(thread);
             return thread;
         }
-    }
-
-    interface ThreadStats {
-
-        int queues();
-
-        int waits();
-
-        int works();
     }
 
 }
