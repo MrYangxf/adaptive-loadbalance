@@ -36,9 +36,9 @@ public class Configuration implements Serializable {
     /**
      * 指标统计时间窗口配置
      */
-    private long windowSizeOfStats = 10;
+    private long windowSizeOfStats = 500;
 
-    private long timeIntervalOfStats = 50;
+    private long timeIntervalOfStats = 1;
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 

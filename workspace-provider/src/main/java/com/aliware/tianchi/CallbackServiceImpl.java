@@ -72,7 +72,7 @@ public class CallbackServiceImpl implements CallbackService {
 
             // TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
             //                                                             .getAdaptiveExtension();
-
+            //
             // ThreadPoolStats threadPoolStats = threadPool.getThreadPoolStats();
             ThreadPoolStats threadPoolStats = helper.getThreadPoolStats();
             int frees = threadPoolStats.freeCount(),
