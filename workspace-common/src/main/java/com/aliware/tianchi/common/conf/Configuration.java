@@ -36,13 +36,13 @@ public class Configuration implements Serializable {
     /**
      * 指标统计时间窗口配置
      */
-    private long windowSizeOfStats = 500;
+    private long windowSizeOfStats = 60;
 
-    private long timeIntervalOfStats = 1;
+    private long timeIntervalOfStats = 10;
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
-    private SegmentCounterFactory counterFactory = () -> new SkipListCounter();
+    private SegmentCounterFactory counterFactory = () -> new RingCounter(1024);
 
     private boolean openAvgRT = true;
 
