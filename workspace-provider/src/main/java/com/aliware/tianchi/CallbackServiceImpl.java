@@ -5,8 +5,10 @@ import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import com.aliware.tianchi.util.ThreadPoolStats;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
@@ -68,11 +70,11 @@ public class CallbackServiceImpl implements CallbackService {
 
             int weight = 0;
 
-            // TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
-            //                                                             .getAdaptiveExtension();
-            //
-            // ThreadPoolStats threadPoolStats = threadPool.getThreadPoolStats();
-            ThreadPoolStats threadPoolStats = helper.getThreadPoolStats();
+            TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
+                                                                        .getAdaptiveExtension();
+
+            ThreadPoolStats threadPoolStats = threadPool.getThreadPoolStats();
+            // ThreadPoolStats threadPoolStats = helper.getThreadPoolStats();
             int frees = threadPoolStats.freeCount(),
                     waits = threadPoolStats.waitCount(),
                     works = threadPoolStats.workCount();
