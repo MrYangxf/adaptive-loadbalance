@@ -7,8 +7,7 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.LockSupport;
 
-import static com.aliware.tianchi.common.util.ObjectUtil.checkNotNull;
-import static com.aliware.tianchi.common.util.ObjectUtil.isNull;
+import static com.aliware.tianchi.common.util.ObjectUtil.*;
 import static com.aliware.tianchi.util.ThreadPoolStats.EMPTY_THREAD_POOL_STATS;
 
 /**
@@ -32,17 +31,30 @@ public class ThreadPoolUtil {
         for (Thread t : threadSet) {
             Thread.State state = t.getState();
             Object blocker;
-            if (state != Thread.State.WAITING &&
-                state != Thread.State.TIMED_WAITING ||
-                isNull(blocker = LockSupport.getBlocker(t))) {
-                workCount++;
-                continue;
-            }
+            try {
+                if (state == Thread.State.RUNNABLE &&
+                    nonNull(blockerField.get(t))) {
+                    // 被可中断io阻塞
+                    waitCount++;
+                    continue;
+                }
 
-            if (blocker == maybeBlocker) {
-                freeCount++;
-            } else {
-                waitCount++;
+                if (state != Thread.State.WAITING &&
+                    state != Thread.State.TIMED_WAITING ||
+                    isNull(blocker = LockSupport.getBlocker(t))) {
+                    workCount++;
+                    continue;
+                }
+
+                if (blocker == maybeBlocker) {
+                    // 被线程池队列阻塞，即是空闲的线程
+                    freeCount++;
+                } else {
+                    // 阻塞在其他park
+                    waitCount++;
+                }
+            } catch (IllegalAccessException e) {
+                // ...
             }
         }
 
@@ -131,6 +143,7 @@ public class ThreadPoolUtil {
     private static final Field threadField;
     private static final Field workQueueField;
     private static final Field transfererField;
+    private static final Field blockerField;
 
     static {
         try {
@@ -146,6 +159,9 @@ public class ThreadPoolUtil {
 
             transfererField = SynchronousQueue.class.getDeclaredField("transferer");
             transfererField.setAccessible(true);
+
+            blockerField = Thread.class.getDeclaredField("blocker");
+            blockerField.setAccessible(true);
         } catch (Exception e) {
             throw new Error(e);
         }
