@@ -5,10 +5,8 @@ import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import com.aliware.tianchi.util.ThreadPoolStats;
-import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.rpc.listener.CallbackListener;
 import org.apache.dubbo.rpc.service.CallbackService;
 
@@ -68,7 +66,7 @@ public class CallbackServiceImpl implements CallbackService {
             // update runtime info
             helper.updateRuntimeInfo();
 
-            int weight;
+            int weight = 0;
 
             // TestThreadPool threadPool = (TestThreadPool) ExtensionLoader.getExtensionLoader(ThreadPool.class)
             //                                                             .getAdaptiveExtension();
@@ -79,11 +77,18 @@ public class CallbackServiceImpl implements CallbackService {
                     waits = threadPoolStats.waitCount(),
                     works = threadPoolStats.workCount();
 
-            if (waits > 0 || works > weightCache) {
+            if (waits > 0) {
                 weight = works;
                 weightCache = weight;
-            } else {
+                previousMillis = System.currentTimeMillis();
+            } else if (works > weightCache) {
+                weight = works;
+                weightCache = weight;
+            } else if (works + 10 > weightCache ||
+                       System.currentTimeMillis() < previousMillis + 2500) {
                 weight = weightCache;
+            } else {
+                weightCache = works;
             }
 
             if (weight < helper.getThreads() / 2) {
