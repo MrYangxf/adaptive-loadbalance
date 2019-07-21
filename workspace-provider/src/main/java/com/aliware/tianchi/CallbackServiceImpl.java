@@ -3,6 +3,7 @@ package com.aliware.tianchi;
 import com.aliware.tianchi.common.conf.Configuration;
 import com.aliware.tianchi.common.metric.InstanceStats;
 import com.aliware.tianchi.common.metric.SnapshotStats;
+import com.aliware.tianchi.common.util.MathUtil;
 import com.aliware.tianchi.util.NearRuntimeHelper;
 import com.aliware.tianchi.util.ThreadPoolStats;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -83,11 +84,12 @@ public class CallbackServiceImpl implements CallbackService {
                 weight = works;
                 weightCache = weight;
                 previousMillis = System.currentTimeMillis();
+            } else if (MathUtil.isApproximate(works, weightCache, 10)) {
+                weight = weightCache;
             } else if (works > weightCache) {
                 weight = works;
                 weightCache = weight;
-            } else if (works + 10 > weightCache ||
-                       System.currentTimeMillis() < previousMillis + 2500) {
+            } else if (System.currentTimeMillis() < previousMillis + 2500) {
                 weight = weightCache;
             } else {
                 weightCache = works;
