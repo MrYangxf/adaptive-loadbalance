@@ -80,7 +80,7 @@ public class UserLoadBalance implements LoadBalance {
         }
 
         Queue<StatsTokenBucket> idleQueue = null;
-        for (int mask = 0x80000001; ; ) {
+        for (int mask = 0x00000001; ; ) {
             StatsTokenBucket bucket = queue.poll();
             if (isNull(bucket)) {
                 break;
@@ -124,7 +124,7 @@ public class UserLoadBalance implements LoadBalance {
         int[] weights = new int[size];
         for (int i = 0; i < size; i++) {
             SnapshotStats stats = statsArray[i].getStats();
-            int weight = stats.getDomainThreads() - stats.getWeight();
+            int weight = stats.getWeight();
             total += weight;
             weights[i] = total;
         }
