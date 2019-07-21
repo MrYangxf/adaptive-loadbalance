@@ -42,7 +42,7 @@ public class Configuration implements Serializable {
 
     private TimeUnit timeUnitOfStats = TimeUnit.MILLISECONDS;
 
-    private SegmentCounterFactory counterFactory = () -> new RingCounter(1024);
+    private SegmentCounterFactory counterFactory = () -> new SkipListCounter();
 
     private boolean openAvgRT = true;
 
