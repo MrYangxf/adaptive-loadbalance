@@ -21,7 +21,7 @@ import static com.aliware.tianchi.util.ThreadPoolUtil.getMaybeBlocker;
  *
  * @author yangxf
  */
-// @Adaptive
+@Adaptive
 public class TestThreadPool implements ThreadPool {
 
     private final Set<Thread> threadSet = new ConcurrentHashSet<>();
